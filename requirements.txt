@@ -1,0 +1,7 @@
+bottle==0.12.25
+feedparser==6.0.10
+gevent==22.10.2
+greenlet==2.0.2
+sgmllib3k==1.0.0
+zope.event==4.6
+zope.interface==6.0
