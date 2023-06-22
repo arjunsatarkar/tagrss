@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Add Feed</title>
+    <title>Add Feed | TagRSS</title>
+    <link href="/static/styles/main.css" rel="stylesheet">
 </head>
 <body>
     <a href="/">&lt; home</a>
@@ -17,6 +18,11 @@
     <h1>Add a feed</h1>
     <form method="post">
         <input type="url" placeholder="Feed source" name="feed_source">
+        <br>
+        <div class="side-by-side-help-container">
+            <input type="text" placeholder="Tags" name="tags">
+            <span class="hover-help" tabindex="0" title="Space separated. Backslashes escape spaces.">🛈</span>
+        </div>
         <br>
         <input type="submit" value="Add">
     </form>

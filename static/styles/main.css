@@ -1,0 +1,48 @@
+@font-face {
+    font-family: "Open Sans";
+    src: url("/static/fonts/OpenSans/OpenSans-VariableFont_wdth,wght.ttf") format("truetype-variations");
+    font-weight: 100 1000;
+}
+
+@font-face {
+    font-family: "Open Sans";
+    src: url("/static/fonts/OpenSans/OpenSans-Italic-VariableFont_wdth,wght.ttf") format("truetype-variations");
+    font-style: italic;
+    font-weight: 100 1000;
+}
+
+:root {
+    font-family: "Open Sans", sans-serif;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    border: 1px solid black;
+}
+
+th, td {
+    border: 1px solid black;
+}
+
+.hover-help {
+    cursor: help;
+    user-select: none;
+    padding-left: 0.2em;
+}
+
+@media (pointer: coarse), (hover: none) {
+    div.side-by-side-help-container {
+        display: table-row;
+    }
+
+    div.side-by-side-help-container > * {
+        display: table-cell;
+    }
+
+    div.side-by-side-help-container > .hover-help:focus::after {
+        content: attr(title);
+        font-size: small;
+        padding-left: 0.2em;
+    }
+}
