@@ -18,27 +18,41 @@
                 <th>Title</th>
                 <th>Date</th>
                 <th>Tags</th>
+                <th>Feed</th>
             </tr>
         </thead>
         <tbody>
-            % for i, item in enumerate(reversed(items)):
+            % for i, entry in enumerate(entries):
                 <tr>
                     <td>{{i + 1}}</td>
-                    <td><a href="{{item["link"]}}">{{item["title"]}}</a></td>
+                    <td><a href="{{entry["link"]}}">{{entry["title"]}}</a></td>
                     <%
+                        import time
                         dates = []
-                        if item.get("date_published", None):
-                            dates.append(item["date_published"])
+                        if entry.get("epoch_published", None):
+                            dates.append(time.strftime("%x %X", time.localtime(entry["epoch_published"])))
                         end
-                        if item.get("date_updated", None):
-                            dates.append(item["date_updated"])
+                        if entry.get("epoch_updated", None):
+                            date_updated = time.strftime("%x %X", time.localtime(entry["epoch_updated"]))
+                            if not date_updated in dates:
+                                dates.append(date_updated)
+                            end
                         end
                     %>
                     <td>
                         {{", updated ".join(dates)}}
                     </td>
                     <td>
-                        {{", ".join(item["feed"]["tags"])}}
+                        % tags = tagrss_backend.get_feed_tags(entry["feed_id"])
+                        % for i, tag in enumerate(tags):
+                            % if i > 0:
+                                {{", "}}
+                            % end
+                            <span class="tag">{{tag}}</span>
+                        % end
+                    </td>
+                    <td>
+                        <a href="/manage_feeds?feed={{entry["feed_id"]}}">⚙</a>
                     </td>
                 </tr>
             % end

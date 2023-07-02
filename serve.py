@@ -11,20 +11,22 @@ import os
 import pathlib
 import time
 
+import tagrss
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--host", default="localhost")
 parser.add_argument("--port", default=8000, type=int)
+parser.add_argument("--storage-path", required=True)
 args = parser.parse_args()
 
-feeds_lock = gevent.lock.RLock()
-feeds = {}
+storage_path: pathlib.Path = pathlib.Path(args.storage_path)
 
-feed_items_lock = gevent.lock.RLock()
-feed_items = []
+tagrss_lock = gevent.lock.RLock()
+tagrss_backend = tagrss.TagRss(storage_path=storage_path)
 
 
 def parse_space_separated_tags(inp: str) -> list[str]:
-    tags = []
+    tags = set()
     tag = ""
     escaped = False
     for c in inp:
@@ -35,20 +37,21 @@ def parse_space_separated_tags(inp: str) -> list[str]:
                     continue
             case " ":
                 if not escaped:
-                    tags.append(tag)
+                    tags.add(tag)
                     tag = ""
                     continue
         escaped = False
         tag += c
     if tag:
-        tags.append(tag)
-    return tags
+        tags.add(tag)
+    return tuple(sorted(tags))
 
 
 @bottle.route("/")
 def index():
-    with feed_items_lock:
-        return bottle.template("index", items=feed_items)
+    with tagrss_lock:
+        entries = tagrss_backend.get_entries(limit=100)
+        return bottle.template("index", entries=entries, tagrss_backend=tagrss_backend)
 
 
 @bottle.get("/add_feed")
@@ -62,42 +65,17 @@ def add_feed_effect():
     tags = parse_space_separated_tags(bottle.request.forms.get("tags"))
 
     already_present: bool = False
-    with feeds_lock:
-        if feed_source not in feeds:
-            feeds[feed_source] = {"tags": tags}
-        else:
+    with tagrss_lock:
+        try:
+            tagrss_backend.add_feed(feed_source=feed_source, tags=tags)
+        except tagrss.FeedAlreadyAddedError:
             already_present = True
-
-    feed = feedparser.parse(feed_source)
-    with feed_items_lock:
-        for entry in reversed(feed.entries):
-            try:
-                date_published = time.strftime("%x %X", entry.published_parsed)
-            except AttributeError:
-                date_published = None
-            try:
-                date_updated = time.strftime("%x %X", entry.updated_parsed)
-            except AttributeError:
-                date_updated = None
-            if date_updated == date_published:
-                date_updated = None
-            feed_items.append(
-                {
-                    "title": entry["title"],
-                    "link": entry["link"],
-                    "date_published": date_published,
-                    "date_updated": date_updated,
-                    "feed": {
-                        "tags": tags,
-                    },
-                }
-            )
-
+        # TODO: handle FeedFetchError too
     return bottle.template(
         "add_feed",
         after_add=True,
         feed_source=feed_source,
-        already_present=already_present,
+        already_present=already_present
     )
 
 

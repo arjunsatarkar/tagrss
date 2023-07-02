@@ -25,6 +25,10 @@ th, td {
     border: 1px solid black;
 }
 
+span.tag {
+    background-color: palegoldenrod;
+}
+
 .hover-help {
     cursor: help;
     user-select: none;
