@@ -23,7 +23,6 @@
             <input type="text" placeholder="Tags" name="tags">
             <span class="hover-help" tabindex="0" title="Space separated. Backslashes escape spaces.">🛈</span>
         </div>
-        <br>
         <input type="submit" value="Add">
     </form>
 </body>

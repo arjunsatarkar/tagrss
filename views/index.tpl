@@ -1,3 +1,6 @@
+<%
+    import time
+%>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -27,7 +30,6 @@
                     <td>{{i + 1}}</td>
                     <td><a href="{{entry["link"]}}">{{entry["title"]}}</a></td>
                     <%
-                        import time
                         dates = []
                         if entry.get("epoch_published", None):
                             dates.append(time.strftime("%x %X", time.localtime(entry["epoch_published"])))
@@ -43,7 +45,7 @@
                         {{", updated ".join(dates)}}
                     </td>
                     <td>
-                        % tags = tagrss_backend.get_feed_tags(entry["feed_id"])
+                        % tags = core.get_feed_tags(entry["feed_id"])
                         % for i, tag in enumerate(tags):
                             % if i > 0:
                                 {{", "}}
@@ -52,7 +54,7 @@
                         % end
                     </td>
                     <td>
-                        <a href="/manage_feeds?feed={{entry["feed_id"]}}">⚙</a>
+                        <a href="/manage_feed?feed={{entry["feed_id"]}}">⚙</a>
                     </td>
                 </tr>
             % end

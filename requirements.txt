@@ -1,7 +1,12 @@
 bottle==0.12.25
+certifi==2023.5.7
+charset-normalizer==3.1.0
 feedparser==6.0.10
 gevent==22.10.2
 greenlet==2.0.2
+idna==3.4
+requests==2.31.0
 sgmllib3k==1.0.0
+urllib3==2.0.3
 zope.event==4.6
 zope.interface==6.0
