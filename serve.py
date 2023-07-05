@@ -6,8 +6,10 @@ import bottle
 import gevent.lock
 
 import argparse
-import os
 import pathlib
+import schedule
+import threading
+import time
 import typing
 
 import tagrss
@@ -16,11 +18,12 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--host", default="localhost")
 parser.add_argument("--port", default=8000, type=int)
 parser.add_argument("--storage-path", required=True)
+parser.add_argument("--update-seconds", default=3600, type=int)
 args = parser.parse_args()
 
 storage_path: pathlib.Path = pathlib.Path(args.storage_path)
 
-tagrss_lock = gevent.lock.RLock()
+core_lock = gevent.lock.RLock()
 core = tagrss.TagRss(storage_path=storage_path)
 
 
@@ -57,7 +60,7 @@ def serialise_tags(tags: list[str]) -> str:
 
 @bottle.route("/")
 def index():
-    with tagrss_lock:
+    with core_lock:
         entries = core.get_entries(limit=100)
         return bottle.template("index", entries=entries, core=core)
 
@@ -73,7 +76,7 @@ def add_feed_effect():
     tags = parse_space_separated_tags(bottle.request.forms.get("tags"))  # type: ignore
 
     already_present: bool = False
-    with tagrss_lock:
+    with core_lock:
         try:
             core.add_feed(feed_source=feed_source, tags=tags)
         except tagrss.FeedAlreadyAddedError:
@@ -96,39 +99,65 @@ def manage_feed_view():
         raise bottle.HTTPError(400, "Feed ID not given.")
     feed: dict[str, typing.Any] = {}
     feed["id"] = feed_id
-    feed["source"] = core.get_feed_source(feed_id)
-    feed["title"] = core.get_feed_title(feed_id)
-    feed["tags"] = core.get_feed_tags(feed_id)
+    with core_lock:
+        feed["source"] = core.get_feed_source(feed_id)
+        feed["title"] = core.get_feed_title(feed_id)
+        feed["tags"] = core.get_feed_tags(feed_id)
     feed["serialised_tags"] = serialise_tags(feed["tags"])
     return bottle.template("manage_feed", feed=feed)
 
+
 @bottle.post("/manage_feed")
 def manage_feed_effect_update():
-    feed_id: int = int(bottle.request.forms["id"]) # type: ignore
-    feed_source: str = bottle.request.forms["source"] # type: ignore
-    feed_title: str = bottle.request.forms["title"] # type: ignore
-    feed_tags: list[str] = parse_space_separated_tags(bottle.request.forms["tags"]) # type: ignore
-    core.set_feed_source(feed_id, feed_source)
-    core.set_feed_title(feed_id, feed_title)
-    core.set_feed_tags(feed_id, feed_tags)
-    return bottle.redirect(f"/manage_feed?feed={feed_id}")
+    feed: dict[str, typing.Any] = {}
+    feed["id"] = int(bottle.request.forms["id"])  # type: ignore
+    feed["source"] = bottle.request.forms["source"]  # type: ignore
+    feed["title"] = bottle.request.forms["title"]  # type: ignore
+    feed["tags"] = parse_space_separated_tags(bottle.request.forms["tags"])  # type: ignore
+    feed["serialised_tags"] = bottle.request.forms["tags"]  # type: ignore
+    with core_lock:
+        core.set_feed_source(feed["id"], feed["source"])
+        core.set_feed_title(feed["id"], feed["title"])
+        core.set_feed_tags(feed["id"], feed["tags"])
+    return bottle.template("manage_feed", feed=feed, after_update=True)
 
-@bottle.get("/delete")
-def delete_view():
-    return bottle.static_file("delete.html", root="views")
+
+@bottle.get("/delete_feed")
+def delete_feed_view():
+    return bottle.static_file("delete_feed.html", root="views")
 
 
-@bottle.post("/delete")
-def delete_effect():
+@bottle.post("/delete_feed")
+def delete_feed_effect():
     feed_id: int = int(bottle.request.forms["id"])  # type: ignore
-    core.delete_feed(feed_id)
-    return bottle.redirect("/delete")
+    with core_lock:
+        core.delete_feed(feed_id)
+    return bottle.redirect("/delete_feed")
 
 
 @bottle.get("/static/<path:path>")
 def serve_static(path):
-    return bottle.static_file(path, pathlib.Path(os.getcwd(), "static"))
+    return bottle.static_file(path, "static")
 
+
+def update_feeds(run_event: threading.Event):
+    def inner_update():
+        with core_lock:
+            core.fetch_all_new_feed_entries()
+    inner_update()
+    schedule.every(args.update_seconds).seconds.do(inner_update)
+    try:
+        while run_event.is_set():
+            schedule.run_pending()
+            time.sleep(1)
+    except KeyboardInterrupt:
+        return
+
+run_event = threading.Event()
+run_event.set()
+threading.Thread(target=update_feeds, args=(run_event,)).start()
 
 bottle.run(host=args.host, port=args.port, server="gevent")
-core.close()
+run_event.clear()
+with core_lock:
+    core.close()

@@ -27,38 +27,8 @@ class TagRss:
         self.connection: sqlite3.Connection = sqlite3.connect(storage_path)
 
         with self.connection:
-            self.connection.executescript(
-                """
-PRAGMA foreign_keys = ON;
-
-CREATE TABLE IF NOT EXISTS
-    feeds(
-        id INTEGER PRIMARY KEY,
-        source TEXT UNIQUE,
-        title TEXT
-    ) STRICT;
-
-CREATE TABLE IF NOT EXISTS
-    feed_tags(
-        feed_id INTEGER REFERENCES feeds(id) ON DELETE CASCADE,
-        tag TEXT
-    ) STRICT;
-CREATE INDEX IF NOT EXISTS idx_feed_tags__feed_id__tag ON feed_tags(feed_id, tag);
-CREATE INDEX IF NOT EXISTS idx_feed_tags__tag__feed_id ON feed_tags(tag, feed_id);
-
-CREATE TABLE IF NOT EXISTS
-    entries(
-        id INTEGER PRIMARY KEY,
-        feed_id INTEGER REFERENCES feeds(id) ON DELETE CASCADE,
-        title TEXT,
-        link TEXT,
-        epoch_published INTEGER,
-        epoch_updated INTEGER,
-        epoch_downloaded INTEGER
-    ) STRICT;
-CREATE INDEX IF NOT EXISTS idx_entries__epoch_downloaded ON entries(epoch_downloaded);
-            """
-            )
+            with open("setup.sql", "r") as setup_script:
+                self.connection.executescript(setup_script.read())
             if (1,) not in self.connection.execute("PRAGMA foreign_keys;").fetchmany(1):
                 raise SqliteMissingForeignKeySupportError
 
@@ -90,39 +60,13 @@ CREATE INDEX IF NOT EXISTS idx_entries__epoch_downloaded ON entries(epoch_downlo
                 "INSERT INTO feed_tags(feed_id, tag) VALUES(?, ?);",
                 ((feed_id, tag) for tag in tags),
             )
-            for entry in reversed(parsed.entries):
-                link: str = entry.get("link", None)
-                title: str = entry.get("title", None)
-                try:
-                    epoch_published: typing.Optional[int] = calendar.timegm(
-                        entry.get("published_parsed", None)
-                    )
-                except TypeError:
-                    epoch_published = None
-                try:
-                    epoch_updated: typing.Optional[int] = calendar.timegm(
-                        entry.get("updated_parsed", None)
-                    )
-                except TypeError:
-                    epoch_updated = None
-                self.connection.execute(
-                    "INSERT INTO entries(feed_id, title, link, epoch_published, epoch_updated, epoch_downloaded) \
-                        VALUES(?, ?, ?, ?, ?, ?);",
-                    (
-                        feed_id,
-                        title,
-                        link,
-                        epoch_published,
-                        epoch_updated,
-                        int(time.time()),
-                    ),
-                )
+            self.store_feed_entries(feed_id, parsed)
 
     def get_entries(self, *, limit: int) -> list[dict[str, typing.Any]]:
         with self.connection:
             resp = self.connection.execute(
                 "SELECT feed_id, title, link, epoch_published, epoch_updated FROM entries \
-                    ORDER BY epoch_downloaded DESC LIMIT ?;",
+                    ORDER BY epoch_stored DESC LIMIT ?;",
                 (limit,),
             ).fetchall()
 
@@ -174,7 +118,9 @@ CREATE INDEX IF NOT EXISTS idx_entries__epoch_downloaded ON entries(epoch_downlo
 
     def set_feed_tags(self, feed_id: int, feed_tags: list[str]):
         with self.connection:
-            self.connection.execute("DELETE FROM feed_tags WHERE feed_id = ?;", (feed_id,))
+            self.connection.execute(
+                "DELETE FROM feed_tags WHERE feed_id = ?;", (feed_id,)
+            )
             self.connection.executemany(
                 "INSERT INTO feed_tags(feed_id, tag) VALUES(?, ?);",
                 ((feed_id, tag) for tag in feed_tags),
@@ -184,7 +130,65 @@ CREATE INDEX IF NOT EXISTS idx_entries__epoch_downloaded ON entries(epoch_downlo
         with self.connection:
             self.connection.execute("DELETE FROM feeds WHERE id = ?;", (feed_id,))
 
+    def fetch_all_new_feed_entries(self) -> None:
+        with self.connection:
+            resp = self.connection.execute("SELECT id, source FROM feeds;")
+            while True:
+                row = resp.fetchone()
+                if not row:
+                    break
+                feed_id = row[0]
+                feed_source = row[1]
+                response = requests.get(feed_source)
+                if response.status_code != requests.codes.ok:
+                    continue  # TODO: log this somehow
+                try:
+                    base: str = response.headers["Content-Location"]
+                except KeyError:
+                    base: str = feed_source
+                parsed = feedparser.parse(
+                    io.BytesIO(bytes(response.text, encoding="utf-8")),
+                    response_headers={"Content-Location": base},
+                )
+                self.store_feed_entries(feed_id, parsed)
+
+    def store_feed_entries(self, feed_id: int, parsed_feed):
+        for entry in reversed(parsed_feed.entries):
+            link: str = entry.get("link", None)
+            title: str = entry.get("title", None)
+            try:
+                epoch_published: typing.Optional[int] = calendar.timegm(
+                    entry.get("published_parsed", None)
+                )
+            except TypeError:
+                epoch_published = None
+            try:
+                epoch_updated: typing.Optional[int] = calendar.timegm(
+                    entry.get("updated_parsed", None)
+                )
+            except TypeError:
+                epoch_updated = None
+            with self.connection:
+                self.connection.execute(
+                    "INSERT INTO entries(feed_id, title, link, epoch_published, epoch_updated, epoch_stored) \
+                        VALUES(?, ?, ?, ?, ?, ?);",
+                    (
+                        feed_id,
+                        title,
+                        link,
+                        epoch_published,
+                        epoch_updated,
+                        int(time.time()),
+                    ),
+                )
+
+
     def close(self) -> None:
         with self.connection:
-            self.connection.execute("PRAGMA optimize;")
+            self.connection.executescript(
+                """
+PRAGMA analysis_limit=1000;
+PRAGMA optimize;
+                """
+            )
         self.connection.close()

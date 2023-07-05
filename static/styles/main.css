@@ -15,18 +15,32 @@
     font-family: "Open Sans", sans-serif;
 }
 
+body {
+    background-color: black;
+    color: white;
+}
+
+a:visited {
+    color:violet;
+}
+
+a:link, a.no-visited-indication {
+    color: lightskyblue;
+}
+
 table {
     width: 100%;
     border-collapse: collapse;
-    border: 1px solid black;
+    border: 1px solid white;
 }
 
 th, td {
-    border: 1px solid black;
+    border: 1px solid white;
 }
 
 span.tag {
-    background-color: palegoldenrod;
+    background-color: lightgreen;
+    color: black;
 }
 
 .hover-help {

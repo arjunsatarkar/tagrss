@@ -7,7 +7,10 @@
     <link href="/static/styles/main.css" rel="stylesheet">
 </head>
 <body>
-    <a href="/">&lt; home</a>
+    <a href="/" class="no-visited-indication">&lt; home</a>
+    % if get("after_update", False):
+        <p><em>Updated feed details.</em></p>
+    % end
     <h1>Manage feed</h1>
     <table>
         <tr>
@@ -16,7 +19,7 @@
         </tr>
         <tr>
             <th>Source</th>
-            <td>{{feed["source"]}}</td>
+            <td><a href="{{feed['source']}}" class="no-visited-indication">{{feed["source"]}}</a></td>
         </tr>
         <tr>
             <th>Tags</th>
@@ -48,7 +51,7 @@
         <input type="submit" value="Update" name="update_feed">
     </form>
     <hr>
-    <form method="post" action="/delete">
+    <form method="post" action="/delete_feed">
         <input type="number" name="id" value="{{feed['id']}}" style="display: none;">
         <input type="submit" value="Delete" name="delete_feed">
     </form>

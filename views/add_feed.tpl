@@ -7,7 +7,7 @@
     <link href="/static/styles/main.css" rel="stylesheet">
 </head>
 <body>
-    <a href="/">&lt; home</a>
+    <a href="/" class="no-visited-indication">&lt; home</a>
     % if not get("already_present", False):
         % if get("after_add", False):
             <p><em>Added feed {{feed_source}}</em></p>
