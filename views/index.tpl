@@ -46,7 +46,10 @@
 <body>
     <h1>TagRSS</h1>
     <nav>
-        <p><a href="/add_feed" class="no-visited-indication">Add feed</a></p>
+        <p>
+            <a href="/add_feed" class="no-visited-indication">Add feed</a>&nbsp;|
+            <a href="/list_feeds" class="no-visited-indication">List feeds</a>
+        </p>
     </nav>
     <table>
         <thead>
@@ -61,7 +64,7 @@
         <tbody>
             % for i, entry in enumerate(entries):
                 <tr>
-                    <td>{{i + 1}}</td>
+                    <td>{{i + 1 + offset}}</td>
                     <td><a href="{{entry['link']}}">{{entry["title"]}}</a></td>
                     <%
                         date = ""
@@ -96,5 +99,14 @@
             % end
         </tbody>
     </table>
+    <form>
+        <label>Page
+            <input type="number" value="{{page_num}}" min="1" max="{{total_pages}}" name="page_num">
+        </label> of {{total_pages}}.
+        <label>Per page:
+            <input type="number" value="{{per_page}}" min="1" max="{{max_per_page}}" name="per_page">
+        </label>
+        <input type="submit" value="Go">
+    </form>
 </body>
 </html>

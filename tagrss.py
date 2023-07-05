@@ -34,6 +34,7 @@ class TagRss:
 
     def add_feed(self, feed_source: str, tags: list[str]) -> None:
         response = requests.get(feed_source)
+        epoch_downloaded: int = int(time.time())
         if response.status_code != requests.codes.ok:
             raise FeedFetchError(feed_source, response.status_code)
         try:
@@ -60,25 +61,28 @@ class TagRss:
                 "INSERT INTO feed_tags(feed_id, tag) VALUES(?, ?);",
                 ((feed_id, tag) for tag in tags),
             )
-            self.store_feed_entries(feed_id, parsed)
+            self.store_feed_entries(feed_id, parsed, epoch_downloaded)
 
-    def get_entries(self, *, limit: int) -> list[dict[str, typing.Any]]:
+    def get_entries(
+        self, *, limit: int, offset: int = 0
+    ) -> list[dict[str, typing.Any]]:
         with self.connection:
             resp = self.connection.execute(
-                "SELECT feed_id, title, link, epoch_published, epoch_updated FROM entries \
-                    ORDER BY epoch_stored DESC LIMIT ?;",
-                (limit,),
+                "SELECT id, feed_id, title, link, epoch_published, epoch_updated FROM entries \
+                    ORDER BY id DESC LIMIT ? OFFSET ?;",
+                (limit, offset),
             ).fetchall()
 
         entries = []
         for entry in resp:
             entries.append(
                 {
-                    "feed_id": entry[0],
-                    "title": entry[1],
-                    "link": entry[2],
-                    "epoch_published": entry[3],
-                    "epoch_updated": entry[4],
+                    "id": entry[0],
+                    "feed_id": entry[1],
+                    "title": entry[2],
+                    "link": entry[3],
+                    "epoch_published": entry[4],
+                    "epoch_updated": entry[5],
                 }
             )
         return entries
@@ -130,29 +134,68 @@ class TagRss:
         with self.connection:
             self.connection.execute("DELETE FROM feeds WHERE id = ?;", (feed_id,))
 
-    def fetch_all_new_feed_entries(self) -> None:
+    def get_feeds(self, *, limit: int, offset: int = 0) -> list[dict[str, typing.Any]]:
         with self.connection:
-            resp = self.connection.execute("SELECT id, source FROM feeds;")
+            resp = self.connection.execute(
+                "SELECT id, source, title FROM feeds \
+                ORDER BY id ASC LIMIT ? OFFSET ?;",
+                (limit, offset),
+            ).fetchall()
+        feeds = []
+        for row in resp:
+            feeds.append(
+                {
+                    "id": row[0],
+                    "source": row[1],
+                    "title": row[2],
+                }
+            )
+        return feeds
+
+    def get_all_feed_ids(self):
+        def inner():
+            with self.connection:
+                resp = self.connection.execute("SELECT id FROM feeds;")
             while True:
                 row = resp.fetchone()
                 if not row:
                     break
-                feed_id = row[0]
-                feed_source = row[1]
-                response = requests.get(feed_source)
-                if response.status_code != requests.codes.ok:
-                    continue  # TODO: log this somehow
-                try:
-                    base: str = response.headers["Content-Location"]
-                except KeyError:
-                    base: str = feed_source
-                parsed = feedparser.parse(
-                    io.BytesIO(bytes(response.text, encoding="utf-8")),
-                    response_headers={"Content-Location": base},
-                )
-                self.store_feed_entries(feed_id, parsed)
+                yield row[0]
 
-    def store_feed_entries(self, feed_id: int, parsed_feed):
+        return inner
+
+    def get_entry_count(self) -> int:
+        with self.connection:
+            return self.connection.execute("SELECT count from entry_count;").fetchone()[
+                0
+            ]
+
+    def get_feed_count(self) -> int:
+        with self.connection:
+            return self.connection.execute("SELECT count from feed_count;").fetchone()[
+                0
+            ]
+
+    def fetch_new_feed_entries(self, feed_id: int) -> None:
+        with self.connection:
+            feed_source: str = self.connection.execute(
+                "SELECT source FROM feeds WHERE id = ?;", (feed_id,)
+            ).fetchone()[0]
+            response = requests.get(feed_source)
+            epoch_downloaded: int = int(time.time())
+            if response.status_code != requests.codes.ok:
+                raise FeedFetchError(feed_source, response.status_code)
+            try:
+                base: str = response.headers["Content-Location"]
+            except KeyError:
+                base: str = feed_source
+            parsed = feedparser.parse(
+                io.BytesIO(bytes(response.text, encoding="utf-8")),
+                response_headers={"Content-Location": base},
+            )
+            self.store_feed_entries(feed_id, parsed, epoch_downloaded)
+
+    def store_feed_entries(self, feed_id: int, parsed_feed, epoch_downloaded: int):
         for entry in reversed(parsed_feed.entries):
             link: str = entry.get("link", None)
             title: str = entry.get("title", None)
@@ -170,7 +213,7 @@ class TagRss:
                 epoch_updated = None
             with self.connection:
                 self.connection.execute(
-                    "INSERT INTO entries(feed_id, title, link, epoch_published, epoch_updated, epoch_stored) \
+                    "INSERT INTO entries(feed_id, title, link, epoch_published, epoch_updated, epoch_downloaded) \
                         VALUES(?, ?, ?, ?, ?, ?);",
                     (
                         feed_id,
@@ -178,17 +221,9 @@ class TagRss:
                         link,
                         epoch_published,
                         epoch_updated,
-                        int(time.time()),
+                        epoch_downloaded,
                     ),
                 )
 
-
     def close(self) -> None:
-        with self.connection:
-            self.connection.executescript(
-                """
-PRAGMA analysis_limit=1000;
-PRAGMA optimize;
-                """
-            )
         self.connection.close()

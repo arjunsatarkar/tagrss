@@ -7,12 +7,16 @@ import gevent.lock
 
 import argparse
 import pathlib
+import math
 import schedule
 import threading
 import time
 import typing
 
 import tagrss
+
+MAX_PER_PAGE_ENTRIES = 1000
+DEFAULT_PER_PAGE_ENTRIES = 50
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--host", default="localhost")
@@ -58,11 +62,44 @@ def serialise_tags(tags: list[str]) -> str:
     return result
 
 
-@bottle.route("/")
+@bottle.get("/")
 def index():
+    per_page: int = min(MAX_PER_PAGE_ENTRIES, int(bottle.request.query.get("per_page", DEFAULT_PER_PAGE_ENTRIES)))  # type: ignore
+    page_num = int(bottle.request.query.get("page_num", 1))  # type: ignore
+    offset = (page_num - 1) * per_page
     with core_lock:
-        entries = core.get_entries(limit=100)
-        return bottle.template("index", entries=entries, core=core)
+        total_pages: int = max(1, math.ceil(core.get_entry_count() / per_page))
+        entries = core.get_entries(limit=per_page, offset=offset)
+        return bottle.template(
+            "index",
+            entries=entries,
+            offset=offset,
+            page_num=page_num,
+            total_pages=total_pages,
+            per_page=per_page,
+            max_per_page=MAX_PER_PAGE_ENTRIES,
+            core=core,
+        )
+
+
+@bottle.get("/list_feeds")
+def list_feeds():
+    per_page: int = min(MAX_PER_PAGE_ENTRIES, int(bottle.request.query.get("per_page", DEFAULT_PER_PAGE_ENTRIES)))  # type: ignore
+    page_num = int(bottle.request.query.get("page_num", 1))  # type: ignore
+    offset = (page_num - 1) * per_page
+    with core_lock:
+        total_pages: int = max(1, math.ceil(core.get_feed_count() / per_page))
+        feeds = core.get_feeds(limit=per_page, offset=offset)
+        return bottle.template(
+            "list_feeds",
+            feeds=feeds,
+            offset=offset,
+            page_num=page_num,
+            total_pages=total_pages,
+            per_page=per_page,
+            max_per_page=MAX_PER_PAGE_ENTRIES,
+            core=core,
+        )
 
 
 @bottle.get("/add_feed")
@@ -143,21 +180,22 @@ def serve_static(path):
 def update_feeds(run_event: threading.Event):
     def inner_update():
         with core_lock:
-            core.fetch_all_new_feed_entries()
+            feeds = core.get_all_feed_ids()
+            for feed_id in feeds():
+                core.fetch_new_feed_entries(feed_id)
+
     inner_update()
     schedule.every(args.update_seconds).seconds.do(inner_update)
-    try:
-        while run_event.is_set():
-            schedule.run_pending()
-            time.sleep(1)
-    except KeyboardInterrupt:
-        return
+    while run_event.is_set():
+        schedule.run_pending()
+        time.sleep(1)
 
-run_event = threading.Event()
-run_event.set()
-threading.Thread(target=update_feeds, args=(run_event,)).start()
+
+feed_update_run_event = threading.Event()
+feed_update_run_event.set()
+threading.Thread(target=update_feeds, args=(feed_update_run_event,)).start()
 
 bottle.run(host=args.host, port=args.port, server="gevent")
-run_event.clear()
+feed_update_run_event.clear()
 with core_lock:
     core.close()
