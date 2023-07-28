@@ -1,14 +1,11 @@
 #!/usr/bin/env python3
-import gevent.monkey
-
-gevent.monkey.patch_all()
 import bottle
-import gevent.lock
+import schedule
 
 import argparse
-import pathlib
+import logging
 import math
-import schedule
+import pathlib
 import threading
 import time
 import typing
@@ -17,6 +14,8 @@ import tagrss
 
 MAX_PER_PAGE_ENTRIES = 1000
 DEFAULT_PER_PAGE_ENTRIES = 50
+
+logging.basicConfig(level=logging.INFO)
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--host", default="localhost")
@@ -27,7 +26,7 @@ args = parser.parse_args()
 
 storage_path: pathlib.Path = pathlib.Path(args.storage_path)
 
-core_lock = gevent.lock.RLock()
+core_lock = threading.RLock()
 core = tagrss.TagRss(storage_path=storage_path)
 
 
@@ -113,9 +112,11 @@ def add_feed_effect():
     tags = parse_space_separated_tags(bottle.request.forms.get("tags"))  # type: ignore
 
     already_present: bool = False
+    
+    parsed, epoch_downloaded = tagrss.fetch_parsed_feed(feed_source)
     with core_lock:
         try:
-            core.add_feed(feed_source=feed_source, tags=tags)
+            core.add_feed(feed_source=feed_source, parsed_feed=parsed, epoch_downloaded=epoch_downloaded, tags=tags)
         except tagrss.FeedAlreadyAddedError:
             already_present = True
         # TODO: handle FeedFetchError too
@@ -145,7 +146,7 @@ def manage_feed_view():
 
 
 @bottle.post("/manage_feed")
-def manage_feed_effect_update():
+def manage_feed_effect():
     feed: dict[str, typing.Any] = {}
     feed["id"] = int(bottle.request.forms["id"])  # type: ignore
     feed["source"] = bottle.request.forms["source"]  # type: ignore
@@ -159,17 +160,12 @@ def manage_feed_effect_update():
     return bottle.template("manage_feed", feed=feed, after_update=True)
 
 
-@bottle.get("/delete_feed")
-def delete_feed_view():
-    return bottle.static_file("delete_feed.html", root="views")
-
-
 @bottle.post("/delete_feed")
-def delete_feed_effect():
+def delete_feed():
     feed_id: int = int(bottle.request.forms["id"])  # type: ignore
     with core_lock:
         core.delete_feed(feed_id)
-    return bottle.redirect("/delete_feed")
+    return bottle.static_file("delete_feed.html", root="views")
 
 
 @bottle.get("/static/<path:path>")
@@ -179,23 +175,30 @@ def serve_static(path):
 
 def update_feeds(run_event: threading.Event):
     def inner_update():
+        logging.info("Updating feeds...")
+        limit = 100
         with core_lock:
-            feeds = core.get_all_feed_ids()
-            for feed_id in feeds():
-                core.fetch_new_feed_entries(feed_id)
-
+            feed_count = core.get_feed_count()
+        for i in range(math.ceil(feed_count / limit)):
+            with core_lock:
+                feeds = core.get_feeds(limit=limit, offset=limit * i)
+            for feed in feeds:
+                parsed_feed, epoch_downloaded = tagrss.fetch_parsed_feed(feed["source"])
+                logging.debug(f"Updated feed with source {feed['source']} .")
+                with core_lock:
+                    core.store_feed_entries(feed["id"], parsed_feed, epoch_downloaded)
+        logging.info("Finished updating feeds.")
     inner_update()
     schedule.every(args.update_seconds).seconds.do(inner_update)
     while run_event.is_set():
         schedule.run_pending()
         time.sleep(1)
 
-
 feed_update_run_event = threading.Event()
 feed_update_run_event.set()
 threading.Thread(target=update_feeds, args=(feed_update_run_event,)).start()
 
-bottle.run(host=args.host, port=args.port, server="gevent")
+bottle.run(host=args.host, port=args.port, server="cheroot")
 feed_update_run_event.clear()
 with core_lock:
     core.close()
