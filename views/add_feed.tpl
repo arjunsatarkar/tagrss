@@ -25,5 +25,6 @@
         </div>
         <input type="submit" value="Add">
     </form>
+    % include("footer.tpl")
 </body>
 </html>

@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+"""
+Copyright (c) 2023-present Arjun Satarkar <me@arjunsatarkar.net>.
+Licensed under the GNU Affero General Public License v3.0. See LICENSE.txt in
+the root of this repository for the text of the license.
+"""
 import bottle
 import schedule
 
@@ -112,11 +117,16 @@ def add_feed_effect():
     tags = parse_space_separated_tags(bottle.request.forms.get("tags"))  # type: ignore
 
     already_present: bool = False
-    
+
     parsed, epoch_downloaded = tagrss.fetch_parsed_feed(feed_source)
     with core_lock:
         try:
-            core.add_feed(feed_source=feed_source, parsed_feed=parsed, epoch_downloaded=epoch_downloaded, tags=tags)
+            core.add_feed(
+                feed_source=feed_source,
+                parsed_feed=parsed,
+                epoch_downloaded=epoch_downloaded,
+                tags=tags,
+            )
         except tagrss.FeedAlreadyAddedError:
             already_present = True
         # TODO: handle FeedFetchError too
@@ -165,7 +175,7 @@ def delete_feed():
     feed_id: int = int(bottle.request.forms["id"])  # type: ignore
     with core_lock:
         core.delete_feed(feed_id)
-    return bottle.static_file("delete_feed.html", root="views")
+    return bottle.template("delete_feed")
 
 
 @bottle.get("/static/<path:path>")
@@ -188,11 +198,13 @@ def update_feeds(run_event: threading.Event):
                 with core_lock:
                     core.store_feed_entries(feed["id"], parsed_feed, epoch_downloaded)
         logging.info("Finished updating feeds.")
+
     inner_update()
     schedule.every(args.update_seconds).seconds.do(inner_update)
     while run_event.is_set():
         schedule.run_pending()
         time.sleep(1)
+
 
 feed_update_run_event = threading.Event()
 feed_update_run_event.set()

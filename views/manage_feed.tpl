@@ -55,5 +55,6 @@
         <input type="number" name="id" value="{{feed['id']}}" style="display: none;">
         <input type="submit" value="Delete" name="delete_feed">
     </form>
+    % include("footer.tpl")
 </body>
 </html>

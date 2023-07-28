@@ -10,5 +10,6 @@
 <body>
     <p>Feed successfully deleted. Redirecting...</p>
     <a href="/" class="no-visited-indication">home</a>
+    % include("footer.tpl")
 </body>
 </html>

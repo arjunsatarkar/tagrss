@@ -1,3 +1,8 @@
+/*
+Copyright (c) 2023-present Arjun Satarkar <me@arjunsatarkar.net>.
+Licensed under the GNU Affero General Public License v3.0. See LICENSE.txt in
+the root of this repository for the text of the license.
+*/
 PRAGMA foreign_keys = ON;
 
 CREATE TABLE IF NOT EXISTS tagrss_info(info_key TEXT PRIMARY KEY, value TEXT) STRICT;

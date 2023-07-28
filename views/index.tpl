@@ -108,5 +108,6 @@
         </label>
         <input type="submit" value="Go">
     </form>
+    % include("footer.tpl")
 </body>
 </html>
