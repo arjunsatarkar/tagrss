@@ -21,7 +21,7 @@
         <br>
         <div class="side-by-side-help-container">
             <input type="text" placeholder="Tags" name="tags">
-            <span class="hover-help" tabindex="0" title="Space separated. Backslashes escape spaces.">🛈</span>
+            % include("tag_hover_help.tpl")
         </div>
         <input type="submit" value="Add">
     </form>

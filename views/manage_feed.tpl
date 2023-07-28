@@ -46,7 +46,7 @@
             <label>Tags:
                 <input type="text" name="tags" value="{{feed['serialised_tags']}}">
             </label>
-            <span class="hover-help" tabindex="0" title="Space separated. Backslashes escape spaces.">🛈</span>
+            % include("tag_hover_help.tpl")
         </div>
         <input type="submit" value="Update" name="update_feed">
     </form>

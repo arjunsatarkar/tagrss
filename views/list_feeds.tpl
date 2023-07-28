@@ -13,6 +13,7 @@
         <thead>
             <tr>
                 <th>#</th>
+                <th>ID</th>
                 <th>Feed</th>
                 <th>Source</th>
                 <th>Manage</th>
@@ -22,7 +23,8 @@
             % for i, feed in enumerate(feeds):
                 <tr>
                     <td>{{i + 1 + offset}}</td>
-                    <td>{{feed["title"]}}</td>
+                    <td>{{feed["id"]}}</td>
+                    <td>{{feed["title"]}} (<a href="/?included_feeds={{feed['id']}}" class="no-visited-indication">filter</a>)</td>
                     <td><a href="{{feed['source']}}" class="no-visited-indication">🔗</a></td>
                     <td><a href="/manage_feed?feed={{feed['id']}}" class="no-visited-indication">⚙</a></td>
                 </tr>

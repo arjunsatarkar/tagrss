@@ -51,6 +51,33 @@
             <a href="/list_feeds" class="no-visited-indication">List feeds</a>
         </p>
     </nav>
+    <details {{"open" if (included_feeds or included_tags) else ""}}>
+        <summary>Filter</summary>
+        <form>
+            <div class="side-by-side-help-container">
+                <label>Included feeds:
+                    <input type="text" name="included_feeds" value="{{' '.join([str(feed_id) for feed_id in included_feeds]) if included_feeds else ''}}">
+                </label>
+                % include("hover_help.tpl", text="Space-separated feed IDs.")
+            </div>
+            <div class="side-by-side-help-container">
+                <label>Included tags:
+                    <input type="text" name="included_tags" value="{{included_tags_str}}">
+                </label>
+                % include("tag_hover_help.tpl")
+            </div>
+            <input type="submit" value="Filter">
+            <input type="number" value="{{page_num}}" min="1" max="{{total_pages}}" name="page_num" style="display: none;">
+            <input type="number" value="{{per_page}}" min="1" max="{{max_per_page}}" name="per_page" style="display: none;">
+        </form>
+        <form>
+            <input type="text" name="included_feeds" value="" style="display: none;">
+            <input type="text" name="included_tags" value="" style="display: none;">
+            <input type="submit" value="Clear filters">
+            <input type="number" value="{{page_num}}" min="1" max="{{total_pages}}" name="page_num" style="display: none;">
+            <input type="number" value="{{per_page}}" min="1" max="{{max_per_page}}" name="per_page" style="display: none;">
+        </form>
+    </details>
     <table>
         <thead>
             <tr>
@@ -92,7 +119,7 @@
                     <td class="td-feed">
                         <div>
                             <a href="/manage_feed?feed={{entry['feed_id']}}" class="no-visited-indication">⚙</a>
-                            {{core.get_feed_title(entry["feed_id"])}}
+                            {{core.get_feed_title(entry["feed_id"])}} <small>(</small>{{entry["feed_id"]}}<small>)</small>
                         </div>
                     </td>
                 </tr>
@@ -107,6 +134,12 @@
             <input type="number" value="{{per_page}}" min="1" max="{{max_per_page}}" name="per_page">
         </label>
         <input type="submit" value="Go">
+        % if included_feeds:
+            <input type="text" name="included_feeds" value="{{included_feeds_str}}" style="display: none;">
+        % end
+        % if included_tags:
+            <input type="text" name="included_feeds" value="{{included_tags_str}}" style="display: none;">
+        % end
     </form>
     % include("footer.tpl")
 </body>
