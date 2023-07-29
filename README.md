@@ -17,7 +17,6 @@ See `LICENSE.txt` in the root of this repository for the text of the license.
 * Add JS to make the feed/tag input situation work like one would normally expect rather than like it's 1985. (Progressive enhancement, though.)
 * Do more user input validation
 * Handle more `requests` and `feedparser` error conditions
-* Add some reasonably high internal limit on tag count
 * Add support for authentication
 * Allow specifying update interval on a per-feed basis
 

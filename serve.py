@@ -19,6 +19,7 @@ import tagrss
 
 MAX_PER_PAGE_ENTRIES = 1000
 DEFAULT_PER_PAGE_ENTRIES = 50
+MAX_TAGS = 100
 
 logging.basicConfig(
     format='%(levelname)s:%(name)s:"%(asctime)s":%(message)s',
@@ -40,7 +41,7 @@ core = tagrss.TagRss(storage_path=storage_path)
 
 
 def parse_space_separated_tags(inp: str) -> list[str]:
-    tags = set()
+    tags: set[str] = set()
     tag = ""
     escaped = False
     for c in inp:
@@ -148,6 +149,9 @@ def add_feed_effect():
     feed_source: str = bottle.request.forms.get("feed_source")  # type: ignore
     tags = parse_space_separated_tags(bottle.request.forms.get("tags"))  # type: ignore
 
+    if len(tags) > MAX_TAGS:
+        raise bottle.HTTPError(400, f"A feed cannot have more than {MAX_TAGS} tags.")
+
     already_present: bool = False
 
     parsed, epoch_downloaded = tagrss.fetch_parsed_feed(feed_source)
@@ -196,6 +200,8 @@ def manage_feed_effect():
     feed["title"] = bottle.request.forms["title"]  # type: ignore
     feed["tags"] = parse_space_separated_tags(bottle.request.forms["tags"])  # type: ignore
     feed["serialised_tags"] = bottle.request.forms["tags"]  # type: ignore
+    if len(feed["tags"]) > MAX_TAGS:
+        raise bottle.HTTPError(400, f"A feed cannot have more than {MAX_TAGS} tags.")
     with core_lock:
         core.set_feed_source(feed["id"], feed["source"])
         core.set_feed_title(feed["id"], feed["title"])
