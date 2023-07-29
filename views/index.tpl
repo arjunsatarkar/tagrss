@@ -62,7 +62,7 @@
             </div>
             <div class="side-by-side-help-container">
                 <label>Included tags:
-                    <input type="text" name="included_tags" value="{{included_tags_str}}">
+                    <input type="text" name="included_tags" value="{{included_tags_str if included_tags_str else ''}}">
                 </label>
                 % include("tag_hover_help.tpl")
             </div>
@@ -138,7 +138,7 @@
             <input type="text" name="included_feeds" value="{{included_feeds_str}}" style="display: none;">
         % end
         % if included_tags:
-            <input type="text" name="included_feeds" value="{{included_tags_str}}" style="display: none;">
+            <input type="text" name="included_tags" value="{{included_tags_str}}" style="display: none;">
         % end
     </form>
     % include("footer.tpl")

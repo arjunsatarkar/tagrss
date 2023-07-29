@@ -83,7 +83,7 @@ def index():
     if included_tags_str:
         included_tags = parse_space_separated_tags(included_tags_str)
     with core_lock:
-        total_pages: int = max(1, math.ceil(core.get_entry_count(included_feeds=included_feeds) / per_page))
+        total_pages: int = max(1, math.ceil(core.get_entry_count(included_feeds=included_feeds, included_tags=included_tags) / per_page))
         entries = core.get_entries(limit=per_page, offset=offset, included_feeds=included_feeds, included_tags=included_tags)
         return bottle.template(
             "index",

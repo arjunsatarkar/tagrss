@@ -8,7 +8,7 @@ This project is not in a finished state, but the core functionality is present.
 
 TagRSS is copyright (c) 2023-present Arjun Satarkar \<me@arjunsatarkar.net\>.
 
-TagRSS is licensed under the GNU Affero General Public License v3.0, which requires among other things that "[w]hen a modified version is used to provide a service over a network, the complete source code of the modified version must be made available."[^1]
+TagRSS is licensed under the GNU Affero General Public License v3.0, which requires among other things that "\[w\]hen a modified version is used to provide a service over a network, the complete source code of the modified version must be made available."[^1]
 
 See `LICENSE.txt` in the root of this repository for the text of the license.
 
