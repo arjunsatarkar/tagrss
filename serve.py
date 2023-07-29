@@ -71,20 +71,33 @@ def index():
     per_page: int = min(MAX_PER_PAGE_ENTRIES, int(bottle.request.query.get("per_page", DEFAULT_PER_PAGE_ENTRIES)))  # type: ignore
     page_num = int(bottle.request.query.get("page_num", 1))  # type: ignore
     offset = (page_num - 1) * per_page
-    included_feeds_str: typing.Optional[str] = bottle.request.query.get("included_feeds", None) # type: ignore
+    included_feeds_str: typing.Optional[str] = bottle.request.query.get("included_feeds", None)  # type: ignore
     included_feeds: typing.Optional[list[int]] = None
     if included_feeds_str:
         try:
             included_feeds = [int(feed_id) for feed_id in included_feeds_str.split(" ")]
         except ValueError:
             pass
-    included_tags_str: typing.Optional[str] = bottle.request.query.get("included_tags", None) # type: ignore
+    included_tags_str: typing.Optional[str] = bottle.request.query.get("included_tags", None)  # type: ignore
     included_tags: typing.Optional[list[str]] = None
     if included_tags_str:
         included_tags = parse_space_separated_tags(included_tags_str)
     with core_lock:
-        total_pages: int = max(1, math.ceil(core.get_entry_count(included_feeds=included_feeds, included_tags=included_tags) / per_page))
-        entries = core.get_entries(limit=per_page, offset=offset, included_feeds=included_feeds, included_tags=included_tags)
+        total_pages: int = max(
+            1,
+            math.ceil(
+                core.get_entry_count(
+                    included_feeds=included_feeds, included_tags=included_tags
+                )
+                / per_page
+            ),
+        )
+        entries = core.get_entries(
+            limit=per_page,
+            offset=offset,
+            included_feeds=included_feeds,
+            included_tags=included_tags,
+        )
         return bottle.template(
             "index",
             entries=entries,
@@ -145,6 +158,7 @@ def add_feed_effect():
         except tagrss.FeedAlreadyAddedError:
             already_present = True
         # TODO: handle FeedFetchError too
+    logging.info(f"Added feed {feed_source} .")
     return bottle.template(
         "add_feed",
         after_add=True,
