@@ -97,9 +97,7 @@ class TagRss:
         included_feeds: typing.Optional[typing.Collection[int]] = None,
         included_tags: typing.Optional[typing.Collection[str]] = None,
     ) -> list[dict[str, typing.Any]]:
-        where_clause: str = ""
-        if included_feeds or included_tags:
-            where_clause = "WHERE 1"
+        where_clause: str = "WHERE 1"
         if included_feeds:
             where_clause += f" AND feed_id IN ({','.join('?' * len(included_feeds))})"
         if included_tags:
