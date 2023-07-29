@@ -42,6 +42,7 @@
             white-space: nowrap;
         }
     </style>
+    <script src="/static/scripts/auto_refresh.js" defer></script>
 </head>
 <body>
     <h1>TagRSS</h1>
