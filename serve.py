@@ -20,7 +20,11 @@ import tagrss
 MAX_PER_PAGE_ENTRIES = 1000
 DEFAULT_PER_PAGE_ENTRIES = 50
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    format='%(levelname)s:%(name)s:"%(asctime)s":%(message)s',
+    datefmt="%Y-%m-%d %H:%M:%S %z",
+    level=logging.INFO,
+)
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--host", default="localhost")
@@ -149,16 +153,16 @@ def add_feed_effect():
     parsed, epoch_downloaded = tagrss.fetch_parsed_feed(feed_source)
     with core_lock:
         try:
-            core.add_feed(
+            feed_id = core.add_feed(
                 feed_source=feed_source,
                 parsed_feed=parsed,
                 epoch_downloaded=epoch_downloaded,
                 tags=tags,
             )
+            logging.info(f"Added feed {feed_id} (source: {feed_source}).")
         except tagrss.FeedAlreadyAddedError:
             already_present = True
         # TODO: handle FeedFetchError too
-    logging.info(f"Added feed {feed_source} .")
     return bottle.template(
         "add_feed",
         after_add=True,
@@ -196,6 +200,7 @@ def manage_feed_effect():
         core.set_feed_source(feed["id"], feed["source"])
         core.set_feed_title(feed["id"], feed["title"])
         core.set_feed_tags(feed["id"], feed["tags"])
+    logging.info(f"Edited details of feed {feed['id']}.")
     return bottle.template("manage_feed", feed=feed, after_update=True)
 
 
@@ -204,6 +209,7 @@ def delete_feed():
     feed_id: int = int(bottle.request.forms["id"])  # type: ignore
     with core_lock:
         core.delete_feed(feed_id)
+    logging.info(f"Deleted feed {feed_id}.")
     return bottle.template("delete_feed")
 
 
@@ -223,7 +229,7 @@ def update_feeds(run_event: threading.Event):
                 feeds = core.get_feeds(limit=limit, offset=limit * i)
             for feed in feeds:
                 parsed_feed, epoch_downloaded = tagrss.fetch_parsed_feed(feed["source"])
-                logging.debug(f"Updated feed with source {feed['source']} .")
+                logging.debug(f"Fetched feed {feed['id']} (source {feed['source']}).")
                 with core_lock:
                     core.store_feed_entries(feed["id"], parsed_feed, epoch_downloaded)
         logging.info("Finished updating feeds.")
@@ -240,6 +246,7 @@ feed_update_run_event.set()
 threading.Thread(target=update_feeds, args=(feed_update_run_event,)).start()
 
 bottle.run(host=args.host, port=args.port, server="cheroot")
+logging.info("Exiting...")
 feed_update_run_event.clear()
 with core_lock:
     core.close()

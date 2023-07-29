@@ -69,7 +69,7 @@ class TagRss:
         parsed_feed: feedparser.FeedParserDict,
         epoch_downloaded: int,
         tags: list[str],
-    ) -> None:
+    ) -> int:
         with self.connection:
             feed_title: str = parsed_feed.feed.get("title", "")  # type: ignore
             try:
@@ -87,6 +87,7 @@ class TagRss:
                 ((feed_id, tag) for tag in tags),
             )
             self.store_feed_entries(feed_id, parsed_feed, epoch_downloaded)
+        return feed_id
 
     def get_entries(
         self,
