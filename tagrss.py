@@ -184,23 +184,45 @@ class TagRss:
         with self.connection:
             self.connection.execute("DELETE FROM feeds WHERE id = ?;", (feed_id,))
 
-    def get_feeds(self, *, limit: int, offset: int = 0) -> list[dict[str, typing.Any]]:
+    def get_feeds(
+        self, *, limit: int, offset: int = 0, get_tags: bool = False
+    ) -> list[dict[str, typing.Any]]:
         with self.connection:
             resp = self.connection.execute(
                 "SELECT id, source, title FROM feeds \
                 ORDER BY id ASC LIMIT ? OFFSET ?;",
                 (limit, offset),
             ).fetchall()
-        feeds = []
+        feeds: dict[int, dict[str, typing.Any]] = {}
         for row in resp:
-            feeds.append(
-                {
-                    "id": row[0],
-                    "source": row[1],
-                    "title": row[2],
-                }
-            )
-        return feeds
+            feeds[row[0]] = {
+                "source": row[1],
+                "title": row[2],
+            }
+        if get_tags:
+            with self.connection:
+                feed_ids = feeds.keys()
+                placeholder_str = ",".join(["?"] * len(feed_ids))
+                resp = self.connection.execute(
+                    f"SELECT feed_id, tag FROM feed_tags WHERE feed_id in ({placeholder_str});",
+                    (*feed_ids,),
+                ).fetchall()
+                for row in resp:
+                    try:
+                        feeds[row[0]]["tags"].append(row[1])
+                    except KeyError:
+                        feeds[row[0]]["tags"] = [row[1]]
+        result: list[dict[str, typing.Any]] = []
+        for item in feeds.items():
+            feed = {
+                "id": item[0],
+                "source": item[1]["source"],
+                "title": item[1]["title"],
+            }
+            if get_tags:
+                feed["tags"] = item[1]["tags"]
+            result.append(feed)
+        return result
 
     def get_entry_count(
         self,

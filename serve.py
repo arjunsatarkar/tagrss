@@ -126,7 +126,7 @@ def list_feeds():
     offset = (page_num - 1) * per_page
     with core_lock:
         total_pages: int = max(1, math.ceil(core.get_feed_count() / per_page))
-        feeds = core.get_feeds(limit=per_page, offset=offset)
+        feeds = core.get_feeds(limit=per_page, offset=offset, get_tags=True)
         return bottle.template(
             "list_feeds",
             feeds=feeds,
@@ -135,7 +135,6 @@ def list_feeds():
             total_pages=total_pages,
             per_page=per_page,
             max_per_page=MAX_PER_PAGE_ENTRIES,
-            core=core,
         )
 
 

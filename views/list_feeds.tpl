@@ -59,8 +59,7 @@
                     <td>{{feed["title"]}} (<a href="/?included_feeds={{feed['id']}}" class="no-visited-indication">filter</a>)</td>
                     <td class="td-tags">
                         <div>
-                            % tags = core.get_feed_tags(feed["id"])
-                            % for i, tag in enumerate(tags):
+                            % for i, tag in enumerate(feed["tags"]):
                                 % if i > 0:
                                     {{", "}}
                                 % end
