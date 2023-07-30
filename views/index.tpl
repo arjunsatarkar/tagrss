@@ -102,16 +102,17 @@
                     <td>{{i + 1 + offset}}</td>
                     <td><a href="{{entry['link']}}">{{entry["title"]}}</a></td>
                     <%
-                        date = ""
-                        if entry.get("epoch_published", None):
-                            date = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(entry["epoch_published"]))
-                        end
-                        if entry.get("epoch_updated", None):
-                            date = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(entry["epoch_updated"]))
+                        local_date = ""
+                        utc_date = ""
+                        epoch = entry.get("epoch_published")
+                        epoch = entry.get("epoch_updated", epoch)
+                        if epoch:
+                            local_date = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(epoch))
+                            utc_date = time.strftime("%Y-%m-%d %H:%M:%SZ", time.gmtime(epoch))
                         end
                     %>
                     <td>
-                        <time datetime="{{date}}">{{date}}</time>
+                        <time datetime="{{utc_date}}">{{local_date}}</time>
                     </td>
                     <td class="td-tag">
                         <div>
