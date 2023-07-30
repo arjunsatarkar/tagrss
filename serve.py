@@ -226,7 +226,7 @@ def serve_static(path):
 
 def update_feeds(run_event: threading.Event):
     def inner_update():
-        logging.info("Updating feeds...")
+        logging.info("Updating all feeds...")
         limit = 100
         with core_lock:
             feed_count = core.get_feed_count()
@@ -235,9 +235,17 @@ def update_feeds(run_event: threading.Event):
                 feeds = core.get_feeds(limit=limit, offset=limit * i)
             for feed in feeds:
                 parsed_feed, epoch_downloaded = tagrss.fetch_parsed_feed(feed["source"])
-                logging.debug(f"Fetched feed {feed['id']} (source {feed['source']}).")
+                logging.info(f"Fetched feed {feed['id']} (source {feed['source']}).")
                 with core_lock:
-                    core.store_feed_entries(feed["id"], parsed_feed, epoch_downloaded)
+                    try:
+                        core.store_feed_entries(
+                            feed["id"], parsed_feed, epoch_downloaded
+                        )
+                    except tagrss.StorageConstraintViolationError:
+                        logging.warning(
+                            f"Failed to update feed {feed['id']} with source {feed['source']} "
+                            "due to constraint violation (feed already deleted?)."
+                        )
         logging.info("Finished updating feeds.")
 
     inner_update()

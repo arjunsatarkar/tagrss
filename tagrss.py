@@ -31,6 +31,11 @@ class Sqlite3NotSerializedModeError(Exception):
     pass
 
 
+class StorageConstraintViolationError(Exception):
+    def __init__(self, error):
+        super().__init__(error)
+
+
 def fetch_parsed_feed(feed_source: str) -> tuple[feedparser.FeedParserDict, int]:
     response = requests.get(feed_source)
     epoch_downloaded: int = int(time.time())
@@ -251,18 +256,23 @@ class TagRss:
             except TypeError:
                 epoch_updated = None
             with self.connection:
-                self.connection.execute(
-                    "INSERT INTO entries(feed_id, title, link, epoch_published, epoch_updated, epoch_downloaded) \
-                        VALUES(?, ?, ?, ?, ?, ?);",
-                    (
-                        feed_id,
-                        title,
-                        link,
-                        epoch_published,
-                        epoch_updated,
-                        epoch_downloaded,
-                    ),
-                )
+                try:
+                    self.connection.execute(
+                        "INSERT INTO entries(feed_id, title, link, epoch_published, epoch_updated, epoch_downloaded) \
+                            VALUES(?, ?, ?, ?, ?, ?);",
+                        (
+                            feed_id,
+                            title,
+                            link,
+                            epoch_published,
+                            epoch_updated,
+                            epoch_downloaded,
+                        ),
+                    )
+                except sqlite3.IntegrityError as e:
+                    # Probably feed deleted before we got here, so foreign key
+                    # constraints would have been violated by the insert.
+                    raise StorageConstraintViolationError(e)
 
     def close(self) -> None:
         self.connection.close()
