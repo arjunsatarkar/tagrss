@@ -116,7 +116,7 @@
                     </td>
                     <td class="td-tags">
                         <div>
-                            % tags = core.get_feed_tags(entry["feed_id"])
+                            % tags = referenced_feeds[entry["feed_id"]]["tags"]
                             % for i, tag in enumerate(tags):
                                 % if i > 0:
                                     {{", "}}
@@ -128,7 +128,8 @@
                     <td class="td-feed">
                         <div>
                             <a href="/manage_feed?feed={{entry['feed_id']}}" class="no-visited-indication">⚙</a>
-                            {{core.get_feed_title(entry["feed_id"])}} <small>(</small>{{entry["feed_id"]}}<small>)</small>
+                            {{referenced_feeds[entry["feed_id"]]["title"]}}
+                            <small>(</small>{{entry["feed_id"]}}<small>)</small>
                         </div>
                     </td>
                 </tr>

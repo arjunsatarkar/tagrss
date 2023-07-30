@@ -103,20 +103,30 @@ def index():
             included_feeds=included_feeds,
             included_tags=included_tags,
         )
-        return bottle.template(
-            "index",
-            entries=entries,
-            offset=offset,
-            page_num=page_num,
-            total_pages=total_pages,
-            per_page=per_page,
-            max_per_page=MAX_PER_PAGE_ENTRIES,
-            included_feeds=included_feeds,
-            included_tags=included_tags,
-            included_feeds_str=included_feeds_str,
-            included_tags_str=included_tags_str,
-            core=core,
+    referenced_feed_ids = list({entry["feed_id"] for entry in entries})
+    with core_lock:
+        referenced_feeds_list = core.get_feeds(
+            limit=len(referenced_feed_ids),
+            included_feeds=referenced_feed_ids,
+            get_tags=True,
         )
+    referenced_feeds = {}
+    for feed in referenced_feeds_list:
+        referenced_feeds[feed["id"]] = {k: feed[k] for k in feed if k != "id"}
+    return bottle.template(
+        "index",
+        entries=entries,
+        offset=offset,
+        page_num=page_num,
+        total_pages=total_pages,
+        per_page=per_page,
+        max_per_page=MAX_PER_PAGE_ENTRIES,
+        included_feeds=included_feeds,
+        included_tags=included_tags,
+        included_feeds_str=included_feeds_str,
+        included_tags_str=included_tags_str,
+        referenced_feeds=referenced_feeds
+    )
 
 
 @bottle.get("/list_feeds")
