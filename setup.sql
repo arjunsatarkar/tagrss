@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS tagrss_info(info_key TEXT PRIMARY KEY, value TEXT) ST
 INSERT
     OR REPLACE INTO tagrss_info(info_key, value)
 VALUES
-    ("version", "0.10.0");
+    ("version", "0.11.0");
 
 CREATE TABLE IF NOT EXISTS feed_count(
     id INTEGER PRIMARY KEY CHECK (id = 0),
@@ -23,7 +23,7 @@ VALUES
     (0, 0);
 
 CREATE TABLE IF NOT EXISTS feeds(
-    id INTEGER PRIMARY KEY,
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
     source TEXT UNIQUE,
     title TEXT
 ) STRICT;

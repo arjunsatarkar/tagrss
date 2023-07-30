@@ -1,7 +1,7 @@
 (() => {
     const onFrontPage = () => {
         const searchParams = new URLSearchParams(window.location.search);
-        let pageNum = searchParams.get("page_num");
+        const pageNum = searchParams.get("page_num");
         return (pageNum === "1") || (pageNum === null);
     };
 
