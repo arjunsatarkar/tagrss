@@ -75,8 +75,8 @@ class TagRss:
         epoch_downloaded: int,
         tags: list[str],
     ) -> int:
+        feed_title: str = parsed_feed.feed.get("title", "")  # type: ignore
         with self.connection:
-            feed_title: str = parsed_feed.feed.get("title", "")  # type: ignore
             try:
                 self.connection.execute(
                     "INSERT INTO feeds(source, title) VALUES(?, ?);",
@@ -91,7 +91,7 @@ class TagRss:
                 "INSERT INTO feed_tags(feed_id, tag) VALUES(?, ?);",
                 ((feed_id, tag) for tag in tags),
             )
-            self.store_feed_entries(feed_id, parsed_feed, epoch_downloaded)
+        self.store_feed_entries(feed_id, parsed_feed, epoch_downloaded)
         return feed_id
 
     def get_entries(
@@ -200,18 +200,18 @@ class TagRss:
                 "title": row[2],
             }
         if get_tags:
+            feed_ids = feeds.keys()
+            placeholder_str = ",".join(["?"] * len(feed_ids))
             with self.connection:
-                feed_ids = feeds.keys()
-                placeholder_str = ",".join(["?"] * len(feed_ids))
                 resp = self.connection.execute(
                     f"SELECT feed_id, tag FROM feed_tags WHERE feed_id in ({placeholder_str});",
                     (*feed_ids,),
                 ).fetchall()
-                for row in resp:
-                    try:
-                        feeds[row[0]]["tags"].append(row[1])
-                    except KeyError:
-                        feeds[row[0]]["tags"] = [row[1]]
+            for row in resp:
+                try:
+                    feeds[row[0]]["tags"].append(row[1])
+                except KeyError:
+                    feeds[row[0]]["tags"] = [row[1]]
         result: list[dict[str, typing.Any]] = []
         for item in feeds.items():
             feed = {
