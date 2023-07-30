@@ -22,7 +22,7 @@
         th#th-tag {
             width: 20%;
         }
-        td.td-tag > div {
+        td.td-tags > div {
             width: 100%;
             height: 100%;
             margin: 0;
@@ -114,7 +114,7 @@
                     <td>
                         <time datetime="{{utc_date}}">{{local_date}}</time>
                     </td>
-                    <td class="td-tag">
+                    <td class="td-tags">
                         <div>
                             % tags = core.get_feed_tags(entry["feed_id"])
                             % for i, tag in enumerate(tags):
