@@ -41,6 +41,10 @@
             overflow: auto;
             white-space: nowrap;
         }
+
+        label#refresh_checkbox_label {
+            float: right;
+        }
     </style>
     <script src="/static/scripts/auto_refresh.js" defer></script>
 </head>
@@ -52,6 +56,9 @@
             <a href="/list_feeds" class="no-visited-indication">List feeds</a>
         </p>
     </nav>
+    <label id="refresh_checkbox_label" style="display: none;">Refresh entries periodically
+        <input type="checkbox" checked>
+    </label>
     <details {{"open" if (included_feeds or included_tags) else ""}}>
         <summary>Filter</summary>
         <form>
@@ -68,15 +75,15 @@
             %     input_value=included_tags_str if included_tags_str else ""
             % )
             <input type="submit" value="Filter">
-            <input type="number" value="{{page_num}}" min="1" max="{{total_pages}}" name="page_num" style="display: none;">
-            <input type="number" value="{{per_page}}" min="1" max="{{max_per_page}}" name="per_page" style="display: none;">
+            <input type="hidden" value="{{page_num}}" min="1" max="{{total_pages}}" name="page_num">
+            <input type="hidden" value="{{per_page}}" min="1" max="{{max_per_page}}" name="per_page">
         </form>
         <form>
-            <input type="text" name="included_feeds" value="" style="display: none;">
-            <input type="text" name="included_tags" value="" style="display: none;">
+            <input type="hidden" name="included_feeds" value="">
+            <input type="hidden" name="included_tags" value="">
             <input type="submit" value="Clear filters">
-            <input type="number" value="{{page_num}}" min="1" max="{{total_pages}}" name="page_num" style="display: none;">
-            <input type="number" value="{{per_page}}" min="1" max="{{max_per_page}}" name="per_page" style="display: none;">
+            <input type="hidden" value="{{page_num}}" min="1" max="{{total_pages}}" name="page_num">
+            <input type="hidden" value="{{per_page}}" min="1" max="{{max_per_page}}" name="per_page">
         </form>
     </details>
     <table>
@@ -136,10 +143,10 @@
         </label>
         <input type="submit" value="Go">
         % if included_feeds:
-            <input type="text" name="included_feeds" value="{{included_feeds_str}}" style="display: none;">
+            <input type="hidden" name="included_feeds" value="{{included_feeds_str}}">
         % end
         % if included_tags:
-            <input type="text" name="included_tags" value="{{included_tags_str}}" style="display: none;">
+            <input type="hidden" name="included_tags" value="{{included_tags_str}}">
         % end
     </form>
     % include("footer.tpl")
