@@ -1,9 +1,7 @@
 (() => {
     const UPDATE_INTERVAL_MILLISECONDS = 1 * 60 * 1000; // 1 minute
     setInterval(async () => {
-        const response = await fetch(window.location, {
-            credentials: "same-origin",
-        });
+        const response = await fetch(window.location);
         if (!response.ok) {
             return;
         }
