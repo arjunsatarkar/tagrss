@@ -235,7 +235,7 @@ def update_feeds(run_event: threading.Event):
                 feeds = core.get_feeds(limit=limit, offset=limit * i)
             for feed in feeds:
                 parsed_feed, epoch_downloaded = tagrss.fetch_parsed_feed(feed["source"])
-                logging.info(f"Fetched feed {feed['id']} (source {feed['source']}).")
+                logging.debug(f"Fetched feed {feed['id']} (source {feed['source']}).")
                 with core_lock:
                     try:
                         core.store_feed_entries(
@@ -246,7 +246,7 @@ def update_feeds(run_event: threading.Event):
                             f"Failed to update feed {feed['id']} with source {feed['source']} "
                             "due to constraint violation (feed already deleted?)."
                         )
-        logging.info("Finished updating feeds.")
+        logging.info("Finished updating all feeds.")
 
     inner_update()
     schedule.every(args.update_seconds).seconds.do(inner_update)

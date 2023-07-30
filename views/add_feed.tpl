@@ -17,12 +17,11 @@
     % end
     <h1>Add a feed</h1>
     <form method="post">
-        <input type="url" placeholder="Feed source" name="feed_source">
+        <label>Source:
+            <input type="url" name="feed_source">
+        </label>
         <br>
-        <div class="side-by-side-help-container">
-            <input type="text" placeholder="Tags" name="tags">
-            % include("tag_hover_help.tpl")
-        </div>
+        % include("tag_input.tpl", input_name="tags")
         <input type="submit" value="Add">
     </form>
     % include("footer.tpl")

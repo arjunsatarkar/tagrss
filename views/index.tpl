@@ -61,12 +61,12 @@
                 </label>
                 % include("hover_help.tpl", text="Space-separated feed IDs.")
             </div>
-            <div class="side-by-side-help-container">
-                <label>Included tags:
-                    <input type="text" name="included_tags" value="{{included_tags_str if included_tags_str else ''}}">
-                </label>
-                % include("tag_hover_help.tpl")
-            </div>
+            % include(
+            %     "tag_input.tpl",
+            %     label="Included tags:",
+            %     input_name="included_tags",
+            %     input_value=included_tags_str if included_tags_str else ""
+            % )
             <input type="submit" value="Filter">
             <input type="number" value="{{page_num}}" min="1" max="{{total_pages}}" name="page_num" style="display: none;">
             <input type="number" value="{{per_page}}" min="1" max="{{max_per_page}}" name="per_page" style="display: none;">

@@ -42,12 +42,7 @@
         <label>Source:
             <input type="text" name="source" value="{{feed['source']}}"><br>
         </label>
-        <div class="side-by-side-help-container">
-            <label>Tags:
-                <input type="text" name="tags" value="{{feed['serialised_tags']}}">
-            </label>
-            % include("tag_hover_help.tpl")
-        </div>
+        % include("tag_input.tpl", input_name="tags", input_value=feed["serialised_tags"])
         <input type="submit" value="Update" name="update_feed">
     </form>
     <hr>
