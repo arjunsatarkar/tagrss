@@ -254,7 +254,6 @@ class SqliteStorageProvider(StorageProvider):
             except sqlite3.IntegrityError:
                 raise FeedSourceAlreadyExistsError
 
-
     def set_feed_title(self, feed_id: FeedId, feed_title: str) -> None:
         with self.__get_connection() as conn:
             try:
