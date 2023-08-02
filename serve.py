@@ -36,7 +36,6 @@ args = parser.parse_args()
 
 storage_path: pathlib.Path = pathlib.Path(args.storage_path)
 
-core_lock = threading.RLock()
 core = tagrss.TagRss(storage_path=storage_path)
 
 
@@ -87,32 +86,30 @@ def index():
     included_tags: typing.Optional[list[str]] = None
     if included_tags_str:
         included_tags = parse_space_separated_tags(included_tags_str)
-    with core_lock:
-        total_pages: int = max(
-            1,
-            math.ceil(
-                core.get_entry_count(
-                    included_feeds=included_feeds, included_tags=included_tags
-                )
-                / per_page
-            ),
-        )
-        entries = core.get_entries(
-            limit=per_page,
-            offset=offset,
-            included_feeds=included_feeds,
-            included_tags=included_tags,
-        )
-    referenced_feed_ids = list({entry["feed_id"] for entry in entries})
-    with core_lock:
-        referenced_feeds_list = core.get_feeds(
-            limit=len(referenced_feed_ids),
-            included_feeds=referenced_feed_ids,
-            get_tags=True,
-        )
+    total_pages: int = max(
+        1,
+        math.ceil(
+            core.get_entry_count(
+                included_feeds=included_feeds, included_tags=included_tags
+            )
+            / per_page
+        ),
+    )
+    entries = core.get_entries(
+        limit=per_page,
+        offset=offset,
+        included_feeds=included_feeds,
+        included_tags=included_tags,
+    )
+    referenced_feed_ids = list({entry.feed_id for entry in entries})
+    referenced_feeds_list = core.get_feeds(
+        limit=len(referenced_feed_ids),
+        included_feeds=referenced_feed_ids,
+        get_tags=True,
+    )
     referenced_feeds = {}
     for feed in referenced_feeds_list:
-        referenced_feeds[feed["id"]] = {k: feed[k] for k in feed if k != "id"}
+        referenced_feeds[feed.id] = feed
     return bottle.template(
         "index",
         entries=entries,
@@ -125,7 +122,7 @@ def index():
         included_tags=included_tags,
         included_feeds_str=included_feeds_str,
         included_tags_str=included_tags_str,
-        referenced_feeds=referenced_feeds
+        referenced_feeds=referenced_feeds,
     )
 
 
@@ -134,18 +131,17 @@ def list_feeds():
     per_page: int = min(MAX_PER_PAGE_ENTRIES, int(bottle.request.query.get("per_page", DEFAULT_PER_PAGE_ENTRIES)))  # type: ignore
     page_num = int(bottle.request.query.get("page_num", 1))  # type: ignore
     offset = (page_num - 1) * per_page
-    with core_lock:
-        total_pages: int = max(1, math.ceil(core.get_feed_count() / per_page))
-        feeds = core.get_feeds(limit=per_page, offset=offset, get_tags=True)
-        return bottle.template(
-            "list_feeds",
-            feeds=feeds,
-            offset=offset,
-            page_num=page_num,
-            total_pages=total_pages,
-            per_page=per_page,
-            max_per_page=MAX_PER_PAGE_ENTRIES,
-        )
+    total_pages: int = max(1, math.ceil(core.get_feed_count() / per_page))
+    feeds = core.get_feeds(limit=per_page, offset=offset, get_tags=True)
+    return bottle.template(
+        "list_feeds",
+        feeds=feeds,
+        offset=offset,
+        page_num=page_num,
+        total_pages=total_pages,
+        per_page=per_page,
+        max_per_page=MAX_PER_PAGE_ENTRIES,
+    )
 
 
 @bottle.get("/add_feed")
@@ -163,19 +159,23 @@ def add_feed_effect():
 
     already_present: bool = False
 
-    parsed, epoch_downloaded = tagrss.fetch_parsed_feed(feed_source)
-    with core_lock:
-        try:
-            feed_id = core.add_feed(
-                feed_source=feed_source,
-                parsed_feed=parsed,
-                epoch_downloaded=epoch_downloaded,
-                tags=tags,
-            )
-            logging.info(f"Added feed {feed_id} (source: {feed_source}).")
-        except tagrss.FeedAlreadyAddedError:
-            already_present = True
-        # TODO: handle FeedFetchError too
+    try:
+        feed_id = core.add_feed(
+            source=feed_source,
+            tags=tags,
+        )
+        logging.info(f"Added feed {feed_id} (source: {feed_source}).")
+    except tagrss.FeedSourceAlreadyExistsError:
+        already_present = True
+    except tagrss.FeedTitleAlreadyInUseError as e:
+        # TODO: add option to set title on /add_feed so this can be remedied without
+        # changing the existing feed
+        raise bottle.HTTPError(
+            400,
+            f"Cannot add feed with title {str(e)} as another feed already has that "
+            "title.",
+        )
+    # TODO: handle FeedFetchError too
     return bottle.template(
         "add_feed",
         after_add=True,
@@ -193,10 +193,9 @@ def manage_feed_view():
         raise bottle.HTTPError(400, "Feed ID not given.")
     feed: dict[str, typing.Any] = {}
     feed["id"] = feed_id
-    with core_lock:
-        feed["source"] = core.get_feed_source(feed_id)
-        feed["title"] = core.get_feed_title(feed_id)
-        feed["tags"] = core.get_feed_tags(feed_id)
+    feed["source"] = core.get_feed_source(feed_id)
+    feed["title"] = core.get_feed_title(feed_id)
+    feed["tags"] = core.get_feed_tags(feed_id)
     feed["serialised_tags"] = serialise_tags(feed["tags"])
     return bottle.template("manage_feed", feed=feed)
 
@@ -211,10 +210,23 @@ def manage_feed_effect():
     feed["serialised_tags"] = bottle.request.forms["tags"]  # type: ignore
     if len(feed["tags"]) > MAX_TAGS:
         raise bottle.HTTPError(400, f"A feed cannot have more than {MAX_TAGS} tags.")
-    with core_lock:
+    try:
         core.set_feed_source(feed["id"], feed["source"])
+    except tagrss.FeedSourceAlreadyExistsError:
+        raise bottle.HTTPError(
+            400,
+            f"Cannot change source to {feed['source']} as there is already a feed with"
+            " that source.",
+        )
+    try:
         core.set_feed_title(feed["id"], feed["title"])
-        core.set_feed_tags(feed["id"], feed["tags"])
+    except tagrss.FeedTitleAlreadyInUseError:
+        raise bottle.HTTPError(
+            400,
+            f"Cannot change title to {feed['title']} as there is already a feed with"
+            " that title.",
+        )
+    core.set_feed_tags(feed["id"], feed["tags"])
     logging.info(f"Edited details of feed {feed['id']}.")
     return bottle.template("manage_feed", feed=feed, after_update=True)
 
@@ -222,8 +234,7 @@ def manage_feed_effect():
 @bottle.post("/delete_feed")
 def delete_feed():
     feed_id: int = int(bottle.request.forms["id"])  # type: ignore
-    with core_lock:
-        core.delete_feed(feed_id)
+    core.delete_feed(feed_id)
     logging.info(f"Deleted feed {feed_id}.")
     return bottle.template("delete_feed")
 
@@ -237,24 +248,24 @@ def update_feeds(run_event: threading.Event):
     def inner_update():
         logging.info("Updating all feeds...")
         limit = 100
-        with core_lock:
-            feed_count = core.get_feed_count()
+        feed_count = core.get_feed_count()
         for i in range(math.ceil(feed_count / limit)):
-            with core_lock:
-                feeds = core.get_feeds(limit=limit, offset=limit * i)
+            feeds = core.get_feeds(limit=limit, offset=limit * i)
             for feed in feeds:
-                parsed_feed, epoch_downloaded = tagrss.fetch_parsed_feed(feed["source"])
-                logging.debug(f"Fetched feed {feed['id']} (source {feed['source']}).")
-                with core_lock:
-                    try:
-                        core.store_feed_entries(
-                            feed["id"], parsed_feed, epoch_downloaded
-                        )
-                    except tagrss.StorageConstraintViolationError:
-                        logging.warning(
-                            f"Failed to update feed {feed['id']} with source {feed['source']} "
-                            "due to constraint violation (feed already deleted?)."
-                        )
+                parsed, epoch_downloaded = core.fetch_and_parse_feed(feed.source)
+                try:
+                    core.store_feed_entries(
+                        feed_id=feed.id,  # type: ignore
+                        parsed=parsed,
+                        epoch_downloaded=epoch_downloaded,
+                    )
+                except tagrss.StorageConstraintViolationError:
+                    logging.warning(
+                        f"Failed to update feed {feed.id} with source {feed.source} due"
+                        "to constraint violation (feed already deleted?)."
+                    )
+                else:
+                    logging.debug(f"Updated feed {feed.id} (source {feed.source}).")
         logging.info("Finished updating all feeds.")
 
     inner_update()
@@ -271,5 +282,4 @@ threading.Thread(target=update_feeds, args=(feed_update_run_event,)).start()
 bottle.run(host=args.host, port=args.port, server="cheroot")
 logging.info("Exiting...")
 feed_update_run_event.clear()
-with core_lock:
-    core.close()
+core.close()

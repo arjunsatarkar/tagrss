@@ -55,11 +55,11 @@
             % for i, feed in enumerate(feeds):
                 <tr>
                     <td>{{i + 1 + offset}}</td>
-                    <td>{{feed["id"]}}</td>
-                    <td>{{feed["title"]}} (<a href="/?included_feeds={{feed['id']}}" class="no-visited-indication">filter</a>)</td>
+                    <td>{{feed.id}}</td>
+                    <td>{{feed.title}} (<a href="/?included_feeds={{feed.id}}" class="no-visited-indication">filter</a>)</td>
                     <td class="td-tags">
                         <div>
-                            % for i, tag in enumerate(feed["tags"]):
+                            % for i, tag in enumerate(feed.tags):
                                 % if i > 0:
                                     {{", "}}
                                 % end
@@ -67,8 +67,8 @@
                             % end
                         </div>
                     </td>
-                    <td><a href="{{feed['source']}}" class="no-visited-indication">🔗</a></td>
-                    <td><a href="/manage_feed?feed={{feed['id']}}" class="no-visited-indication">⚙</a></td>
+                    <td><a href="{{feed.source}}" class="no-visited-indication">🔗</a></td>
+                    <td><a href="/manage_feed?feed={{feed.id}}" class="no-visited-indication">⚙</a></td>
                 </tr>
             % end
         </tbody>

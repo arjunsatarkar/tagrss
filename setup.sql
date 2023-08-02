@@ -1,8 +1,8 @@
 /*
-Copyright (c) 2023-present Arjun Satarkar <me@arjunsatarkar.net>.
-Licensed under the GNU Affero General Public License v3.0. See LICENSE.txt in
-the root of this repository for the text of the license.
-*/
+ Copyright (c) 2023-present Arjun Satarkar <me@arjunsatarkar.net>.
+ Licensed under the GNU Affero General Public License v3.0. See LICENSE.txt in
+ the root of this repository for the text of the license.
+ */
 PRAGMA foreign_keys = ON;
 
 CREATE TABLE IF NOT EXISTS tagrss_info(info_key TEXT PRIMARY KEY, value TEXT) STRICT;
@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS tagrss_info(info_key TEXT PRIMARY KEY, value TEXT) ST
 INSERT
     OR REPLACE INTO tagrss_info(info_key, value)
 VALUES
-    ("version", "0.11.0");
+    ("version", "0.12.0");
 
 CREATE TABLE IF NOT EXISTS feed_count(
     id INTEGER PRIMARY KEY CHECK (id = 0),
@@ -25,7 +25,7 @@ VALUES
 CREATE TABLE IF NOT EXISTS feeds(
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     source TEXT UNIQUE,
-    title TEXT
+    title TEXT UNIQUE
 ) STRICT;
 
 CREATE TRIGGER IF NOT EXISTS trig_feeds__increment_feed_count_after_insert

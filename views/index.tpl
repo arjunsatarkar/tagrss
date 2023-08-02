@@ -100,12 +100,14 @@
             % for i, entry in enumerate(entries):
                 <tr>
                     <td>{{i + 1 + offset}}</td>
-                    <td><a href="{{entry['link']}}">{{entry["title"]}}</a></td>
+                    <td><a href="{{entry.link}}">{{entry.title}}</a></td>
                     <%
                         local_date = ""
                         utc_date = ""
-                        epoch = entry.get("epoch_published")
-                        epoch = entry.get("epoch_updated", epoch)
+                        epoch = entry.epoch_updated
+                        if not epoch:
+                            epoch = entry.epoch_published
+                        end
                         if epoch:
                             local_date = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(epoch))
                             utc_date = time.strftime("%Y-%m-%d %H:%M:%SZ", time.gmtime(epoch))
@@ -116,7 +118,7 @@
                     </td>
                     <td class="td-tags">
                         <div>
-                            % tags = referenced_feeds[entry["feed_id"]]["tags"]
+                            % tags = referenced_feeds[entry.feed_id].tags
                             % for i, tag in enumerate(tags):
                                 % if i > 0:
                                     {{", "}}
@@ -127,9 +129,9 @@
                     </td>
                     <td class="td-feed">
                         <div>
-                            <a href="/manage_feed?feed={{entry['feed_id']}}" class="no-visited-indication">⚙</a>
-                            {{referenced_feeds[entry["feed_id"]]["title"]}}
-                            <small>(</small>{{entry["feed_id"]}}<small>)</small>
+                            <a href="/manage_feed?feed={{entry.feed_id}}" class="no-visited-indication">⚙</a>
+                            {{referenced_feeds[entry.feed_id].title}}
+                            <small>(</small>{{entry.feed_id}}<small>)</small>
                         </div>
                     </td>
                 </tr>
