@@ -185,7 +185,15 @@ def add_feed_effect():
             f'Cannot add feed with title "{str(e)}" as another feed already has that '
             "title.",
         )
-    # TODO: handle FeedFetchError too
+    except tagrss.FeedFetchError as e:
+        try:
+            if e.status_code != 200:
+                raise bottle.HTTPError(
+                    400,
+                    f'Could not fetch feed: "{feed_source}" returned HTTP status code {e.status_code}.',
+                )
+        except AttributeError:
+            raise bottle.HTTPError(500, f"Failed to fetch feed from {feed_source}.")
     return bottle.template(
         "add_feed",
         after_add=True,
@@ -263,6 +271,11 @@ def update_feeds(run_event: threading.Event):
             for feed in feeds:
                 try:
                     core.update_feed(feed.id)  # type: ignore
+                except tagrss.FeedFetchError as e:
+                    logging.error(
+                        f"Failed to update feed {feed.id} with source {feed.source} "
+                        f"due to the following error: {e}."
+                    )
                 except tagrss.StorageConstraintViolationError:
                     logging.warning(
                         f"Failed to update feed {feed.id} with source {feed.source} due"

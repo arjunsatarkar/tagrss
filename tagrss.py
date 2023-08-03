@@ -31,22 +31,19 @@ class FeedTitleAlreadyInUseError(StorageError):
 
 
 class StorageConstraintViolationError(StorageError):
-    def __init__(self, error):
-        super().__init__(error)
-
+    pass
 
 class SqliteMissingForeignKeySupportError(StorageError):
     pass
 
 
-class NetworkError(Exception):
-    pass
-
-
-class FeedFetchError(NetworkError):
-    def __init__(self, feed_source: str, status_code: int):
-        super().__init__(f"Get {feed_source} returned HTTP {status_code}")
-
+class FeedFetchError(Exception):
+    def __init__(self, *, feed_source: str, status_code: typing.Optional[int] = None, underlying: typing.Optional[Exception] = None):
+        if status_code:
+            self.status_code = status_code
+            super().__init__(f"Get {feed_source} returned HTTP {status_code}")
+        else:
+            super().__init__(f"Get {feed_source} failed: {underlying}")
 
 FeedId = int
 Epoch = int
@@ -397,10 +394,13 @@ class TagRss:
         self.__storage = SqliteStorageProvider(storage_path)
 
     def __fetch_and_parse_feed(self, source) -> tuple[ParsedFeed, Epoch]:
-        response = requests.get(source)
+        try:
+            response = requests.get(source)
+        except requests.ConnectionError as e:
+            raise FeedFetchError(feed_source=source, underlying=e)
         epoch_downloaded: int = int(time.time())
         if response.status_code != requests.codes.ok:
-            raise FeedFetchError(source, response.status_code)
+            raise FeedFetchError(feed_source=source, status_code=response.status_code)
         try:
             base: str = response.headers["Content-Location"]
         except KeyError:
