@@ -186,13 +186,18 @@ def add_feed_effect():
             "title.",
         )
     except tagrss.FeedFetchError as e:
-        try:
-            if e.status_code != 200:
+        if e.bad_source:
+            if getattr(e, "status_code", None):
                 raise bottle.HTTPError(
                     400,
                     f'Could not fetch feed: "{feed_source}" returned HTTP status code {e.status_code}.',
                 )
-        except AttributeError:
+            else:
+                raise bottle.HTTPError(
+                    400,
+                    f'Could not fetch feed from "{feed_source}" due to a problem with the source.',
+                )
+        else:
             raise bottle.HTTPError(500, f"Failed to fetch feed from {feed_source}.")
     return bottle.template(
         "add_feed",
