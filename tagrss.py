@@ -115,7 +115,7 @@ class SqliteStorageProvider(StorageProvider):
         with self.__get_connection() as conn:
             try:
                 resp = conn.execute(
-                    "INSERT INTO feeds(source, title) VALUES(?,?);", (source, title)
+                    "INSERT INTO feeds(source, title) VALUES(?, ?);", (source, title)
                 )
             except sqlite3.IntegrityError:
                 resp = conn.execute(
@@ -137,7 +137,7 @@ class SqliteStorageProvider(StorageProvider):
                     "SELECT last_insert_rowid();"
                 ).fetchone()[0]
             conn.executemany(
-                "INSERT INTO feed_tags(feed_id, tag) VALUES(?,?);",
+                "INSERT INTO feed_tags(feed_id, tag) VALUES(?, ?);",
                 ((feed_id, tag) for tag in tags),
             )
         return feed_id
