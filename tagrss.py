@@ -53,10 +53,6 @@ Epoch = int
 ParsedFeed = feedparser.FeedParserDict
 
 
-class StorageProvider(abc.ABC):
-    pass
-
-
 @dataclasses.dataclass(kw_only=True)
 class PartialFeed:
     id: typing.Optional[FeedId] = None
@@ -73,6 +69,10 @@ class Entry:
     link: str
     epoch_published: Epoch
     epoch_updated: Epoch
+
+
+class StorageProvider(abc.ABC):
+    pass
 
 
 class SqliteStorageProvider(StorageProvider):
@@ -392,7 +392,7 @@ class TagRss:
     def __init__(self, *, storage_path: str | pathlib.Path):
         self.__storage = SqliteStorageProvider(storage_path)
 
-    def fetch_and_parse_feed(self, source) -> tuple[ParsedFeed, int]:
+    def __fetch_and_parse_feed(self, source) -> tuple[ParsedFeed, Epoch]:
         response = requests.get(source)
         epoch_downloaded: int = int(time.time())
         if response.status_code != requests.codes.ok:
@@ -412,7 +412,7 @@ class TagRss:
         source: str,
         tags: list[str],
     ) -> int:
-        parsed, epoch_downloaded = self.fetch_and_parse_feed(source)
+        parsed, epoch_downloaded = self.__fetch_and_parse_feed(source)
         title: str = parsed.feed.get("title", "")  # type: ignore
         feed_id = self.__storage.store_feed(source=source, title=title, tags=tags)
         self.__storage.store_entries(
@@ -492,6 +492,11 @@ class TagRss:
         return self.__storage.get_entry_count(
             included_feeds=included_feeds, included_tags=included_tags
         )
+
+    def update_feed(self, feed_id: FeedId) -> None:
+        source = self.get_feed_source(feed_id)
+        parsed, epoch_downloaded = self.__fetch_and_parse_feed(source)
+        self.store_feed_entries(parsed, feed_id, epoch_downloaded)
 
     def store_feed_entries(
         self, parsed: ParsedFeed, feed_id: FeedId, epoch_downloaded: int

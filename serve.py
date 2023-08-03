@@ -72,17 +72,24 @@ def serialise_tags(tags: list[str]) -> str:
 
 @bottle.get("/")
 def index():
-    per_page: int = min(MAX_PER_PAGE_ENTRIES, int(bottle.request.query.get("per_page", DEFAULT_PER_PAGE_ENTRIES)))  # type: ignore
+    per_page: int = min(
+        MAX_PER_PAGE_ENTRIES,
+        int(bottle.request.query.get("per_page", DEFAULT_PER_PAGE_ENTRIES)),  # type: ignore
+    )
     page_num = int(bottle.request.query.get("page_num", 1))  # type: ignore
     offset = (page_num - 1) * per_page
-    included_feeds_str: typing.Optional[str] = bottle.request.query.get("included_feeds", None)  # type: ignore
+    included_feeds_str: typing.Optional[str] = bottle.request.query.get(  # type: ignore
+        "included_feeds", None
+    )
     included_feeds: typing.Optional[list[int]] = None
     if included_feeds_str:
         try:
             included_feeds = [int(feed_id) for feed_id in included_feeds_str.split(" ")]
         except ValueError:
             pass
-    included_tags_str: typing.Optional[str] = bottle.request.query.get("included_tags", None)  # type: ignore
+    included_tags_str: typing.Optional[str] = bottle.request.query.get(  # type: ignore
+        "included_tags", None
+    )
     included_tags: typing.Optional[list[str]] = None
     if included_tags_str:
         included_tags = parse_space_separated_tags(included_tags_str)
@@ -128,7 +135,10 @@ def index():
 
 @bottle.get("/list_feeds")
 def list_feeds():
-    per_page: int = min(MAX_PER_PAGE_ENTRIES, int(bottle.request.query.get("per_page", DEFAULT_PER_PAGE_ENTRIES)))  # type: ignore
+    per_page: int = min(
+        MAX_PER_PAGE_ENTRIES,
+        int(bottle.request.query.get("per_page", DEFAULT_PER_PAGE_ENTRIES)),  # type: ignore
+    )
     page_num = int(bottle.request.query.get("page_num", 1))  # type: ignore
     offset = (page_num - 1) * per_page
     total_pages: int = max(1, math.ceil(core.get_feed_count() / per_page))
@@ -252,13 +262,8 @@ def update_feeds(run_event: threading.Event):
         for i in range(math.ceil(feed_count / limit)):
             feeds = core.get_feeds(limit=limit, offset=limit * i)
             for feed in feeds:
-                parsed, epoch_downloaded = core.fetch_and_parse_feed(feed.source)
                 try:
-                    core.store_feed_entries(
-                        feed_id=feed.id,  # type: ignore
-                        parsed=parsed,
-                        epoch_downloaded=epoch_downloaded,
-                    )
+                    core.update_feed(feed.id)  # type: ignore
                 except tagrss.StorageConstraintViolationError:
                     logging.warning(
                         f"Failed to update feed {feed.id} with source {feed.source} due"
