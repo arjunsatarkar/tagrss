@@ -276,7 +276,11 @@ class SqliteStorageProvider(StorageProvider):
             conn.execute("DELETE FROM feeds WHERE id = ?;", (feed_id,))
 
     def store_entries(
-        self, *, parsed: ParsedFeed, feed_id: FeedId, epoch_downloaded: Epoch
+        self,
+        *,
+        parsed: ParsedFeed,
+        feed_id: FeedId,
+        epoch_downloaded: Epoch,
     ) -> None:
         for entry in reversed(parsed.entries):
             link: typing.Optional[str] = entry.get("link", None)  # type: ignore
@@ -408,15 +412,19 @@ class TagRss:
         return (parsed, epoch_downloaded)
 
     def add_feed(
-        self,
-        source: str,
-        tags: list[str],
+        self, source: str, tags: list[str], custom_title: typing.Optional[str] = None
     ) -> int:
         parsed, epoch_downloaded = self.__fetch_and_parse_feed(source)
         title: str = parsed.feed.get("title", "")  # type: ignore
-        feed_id = self.__storage.store_feed(source=source, title=title, tags=tags)
+        feed_id = self.__storage.store_feed(
+            source=source,
+            title=custom_title if custom_title else title,
+            tags=tags,
+        )
         self.__storage.store_entries(
-            parsed=parsed, feed_id=feed_id, epoch_downloaded=epoch_downloaded
+            parsed=parsed,
+            feed_id=feed_id,
+            epoch_downloaded=epoch_downloaded,
         )
         return feed_id
 

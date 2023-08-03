@@ -21,10 +21,11 @@ body {
 }
 
 a:visited {
-    color:violet;
+    color: violet;
 }
 
-a:link, a.no-visited-indication {
+a:link,
+a.no-visited-indication {
     color: lightskyblue;
 }
 
@@ -34,7 +35,8 @@ table {
     border: 1px solid white;
 }
 
-th, td {
+th,
+td {
     border: 1px solid white;
 }
 
@@ -49,18 +51,36 @@ span.tag {
     padding-left: 0.2em;
 }
 
-@media (pointer: coarse), (hover: none) {
+@media (pointer: coarse),
+(hover: none) {
     div.side-by-side-help-container {
         display: table-row;
     }
 
-    div.side-by-side-help-container > * {
+    div.side-by-side-help-container>* {
         display: table-cell;
     }
 
-    div.side-by-side-help-container > .hover-help:focus::after {
+    div.side-by-side-help-container>.hover-help:focus::after {
         content: attr(title);
         font-size: small;
         padding-left: 0.2em;
     }
+}
+
+form {
+    display: table;
+}
+
+form>div {
+    display: table-row;
+}
+
+form>div>label {
+    padding-right: 1em;
+}
+
+form>div>label,
+form>div>input {
+    display: table-cell;
 }

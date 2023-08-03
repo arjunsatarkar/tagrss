@@ -163,26 +163,26 @@ def add_feed_view():
 def add_feed_effect():
     feed_source: str = bottle.request.forms.get("feed_source")  # type: ignore
     tags = parse_space_separated_tags(bottle.request.forms.get("tags"))  # type: ignore
+    custom_title: str = bottle.request.forms.get("title")  # type: ignore
 
     if len(tags) > MAX_TAGS:
         raise bottle.HTTPError(400, f"A feed cannot have more than {MAX_TAGS} tags.")
-
-    already_present: bool = False
 
     try:
         feed_id = core.add_feed(
             source=feed_source,
             tags=tags,
+            custom_title=custom_title if custom_title else None,
         )
         logging.info(f"Added feed {feed_id} (source: {feed_source}).")
     except tagrss.FeedSourceAlreadyExistsError:
-        already_present = True
+        raise bottle.HTTPError(
+            400, f"Cannot add feed from {feed_source} as it was already added."
+        )
     except tagrss.FeedTitleAlreadyInUseError as e:
-        # TODO: add option to set title on /add_feed so this can be remedied without
-        # changing the existing feed
         raise bottle.HTTPError(
             400,
-            f"Cannot add feed with title {str(e)} as another feed already has that "
+            f'Cannot add feed with title "{str(e)}" as another feed already has that '
             "title.",
         )
     # TODO: handle FeedFetchError too
@@ -190,7 +190,6 @@ def add_feed_effect():
         "add_feed",
         after_add=True,
         feed_source=feed_source,
-        already_present=already_present,
     )
 
 

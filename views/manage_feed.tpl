@@ -35,13 +35,15 @@
         </tr>
     </table>
     <form method="post">
-        <input type="number" name="id" value="{{feed['id']}}" style="display: none;">
-        <label>Title:
-            <input type="text" name="title" value="{{feed['title']}}"><br>
-        </label>
-        <label>Source:
-            <input type="text" name="source" value="{{feed['source']}}"><br>
-        </label>
+        <input type="hidden" name="id" value="{{feed['id']}}">
+        <div>
+            <label for="title-input">Title:</label>
+            <input type="text" name="title" value="{{feed['title']}}" id="title-input">
+        </div>
+        <div>
+            <label for="source-input">Source:</label>
+            <input type="text" name="source" value="{{feed['source']}}" id="source-input">
+        </div>
         % include("tag_input.tpl", input_name="tags", input_value=feed["serialised_tags"])
         <input type="submit" value="Update" name="update_feed">
     </form>
