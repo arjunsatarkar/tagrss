@@ -210,13 +210,19 @@ def add_feed_effect():
 def manage_feed_view():
     try:
         feed_id_raw: str = bottle.request.query["feed"]  # type: ignore
-        feed_id: int = int(feed_id_raw)
     except KeyError:
         raise bottle.HTTPError(400, "Feed ID not given.")
+    try:
+        feed_id: int = int(feed_id_raw)
+    except ValueError:
+        raise bottle.HTTPError(400, f'"{feed_id_raw}" is not a valid feed ID.')
     feed: dict[str, typing.Any] = {}
     feed["id"] = feed_id
-    feed["source"] = core.get_feed_source(feed_id)
-    feed["title"] = core.get_feed_title(feed_id)
+    try:
+        feed["source"] = core.get_feed_source(feed_id)
+        feed["title"] = core.get_feed_title(feed_id)
+    except tagrss.FeedDoesNotExistError:
+        raise bottle.HTTPError(404, f"No feed has ID {feed_id}.")
     feed["tags"] = core.get_feed_tags(feed_id)
     feed["serialised_tags"] = serialise_tags(feed["tags"])
     return bottle.template("manage_feed", feed=feed)

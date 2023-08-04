@@ -38,6 +38,10 @@ class SqliteMissingForeignKeySupportError(StorageError):
     pass
 
 
+class FeedDoesNotExistError(StorageError):
+    pass
+
+
 class FeedFetchError(Exception):
     def __init__(
         self,
@@ -233,15 +237,21 @@ class SqliteStorageProvider(StorageProvider):
 
     def get_feed_source(self, feed_id: FeedId) -> str:
         with self.__get_connection(use_transaction=False) as conn:
-            return conn.execute(
-                "SELECT source  FROM feeds WHERE id = ?;", (feed_id,)
-            ).fetchone()[0]
+            try:
+                return conn.execute(
+                    "SELECT source  FROM feeds WHERE id = ?;", (feed_id,)
+                ).fetchone()[0]
+            except TypeError:
+                raise FeedDoesNotExistError
 
     def get_feed_title(self, feed_id: FeedId) -> str:
         with self.__get_connection(use_transaction=False) as conn:
-            return conn.execute(
-                "SELECT title FROM feeds WHERE id = ?;", (feed_id,)
-            ).fetchone()[0]
+            try:
+                return conn.execute(
+                    "SELECT title FROM feeds WHERE id = ?;", (feed_id,)
+                ).fetchone()[0]
+            except TypeError:
+                raise FeedDoesNotExistError
 
     def get_feed_tags(self, feed_id: FeedId) -> list[str]:
         with self.__get_connection(use_transaction=False) as conn:
