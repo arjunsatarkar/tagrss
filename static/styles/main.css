@@ -57,11 +57,12 @@ span.tag {
         display: table-row;
     }
 
-    div.side-by-side-help-container>* {
+    div.side-by-side-help-container>label,
+    div.side-by-side-help-container input {
         display: table-cell;
     }
 
-    div.side-by-side-help-container>.hover-help:focus::after {
+    div.side-by-side-help-container .hover-help:focus::after {
         content: attr(title);
         font-size: small;
         padding-left: 0.2em;

@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Add Feed | TagRSS</title>
     <link href="/static/styles/main.css" rel="stylesheet">
+    <script src="/static/scripts/dynamic_input.js" defer></script>
 </head>
 <body>
     <a href="/" class="no-visited-indication">&lt; home</a>

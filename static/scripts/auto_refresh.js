@@ -1,3 +1,4 @@
+"use strict";
 (() => {
     const onFrontPage = () => {
         const searchParams = new URLSearchParams(window.location.search);

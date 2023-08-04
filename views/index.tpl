@@ -47,6 +47,7 @@
         }
     </style>
     <script src="/static/scripts/auto_refresh.js" defer></script>
+    <script src="/static/scripts/dynamic_input.js" defer></script>
 </head>
 <body>
     <h1>TagRSS</h1>
@@ -64,8 +65,10 @@
         <form>
             <div class="side-by-side-help-container">
                 <label for="included-feeds-input">Included feeds:</label>
-                <input type="text" name="included_feeds" value="{{' '.join([str(feed_id) for feed_id in included_feeds]) if included_feeds else ''}}" id="included-feeds-input">
-                % include("hover_help.tpl", text="Space-separated feed IDs.")
+                <span>
+                    <input type="text" name="included_feeds" value="{{' '.join([str(feed_id) for feed_id in included_feeds]) if included_feeds else ''}}" id="included-feeds-input">
+                    % include("hover_help.tpl", text="Space-separated feed IDs.")
+                </span>
             </div>
             % include(
             %     "tag_input.tpl",

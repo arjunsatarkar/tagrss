@@ -43,7 +43,7 @@ core = tagrss.TagRss(storage_path=storage_path)
 def forgiving_parse_int(inp, default: int) -> int:
     try:
         return int(inp)
-    except (ValueError, TypeError):
+    except (TypeError, ValueError):
         return default
 
 
