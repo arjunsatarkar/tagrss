@@ -40,6 +40,13 @@ storage_path: pathlib.Path = pathlib.Path(args.storage_path)
 core = tagrss.TagRss(storage_path=storage_path)
 
 
+def forgiving_parse_int(inp, default: int) -> int:
+    try:
+        return int(inp)
+    except (ValueError, TypeError):
+        return default
+
+
 def parse_space_separated_tags(inp: str) -> list[str]:
     tags: set[str] = set()
     tag = ""
@@ -89,9 +96,12 @@ def validate_tags(tags: list[str]) -> typing.Optional[bottle.HTTPError]:
 def index():
     per_page: int = min(
         MAX_PER_PAGE_ENTRIES,
-        int(bottle.request.query.get("per_page", DEFAULT_PER_PAGE_ENTRIES)),  # type: ignore
+        forgiving_parse_int(
+            bottle.request.query.get("per_page"),  # type: ignore
+            DEFAULT_PER_PAGE_ENTRIES,
+        ),
     )
-    page_num = int(bottle.request.query.get("page_num", 1))  # type: ignore
+    page_num = forgiving_parse_int(bottle.request.query.get("page_num"), 1)  # type: ignore
     offset = (page_num - 1) * per_page
     included_feeds_str: typing.Optional[str] = bottle.request.query.get(  # type: ignore
         "included_feeds", None
@@ -152,9 +162,12 @@ def index():
 def list_feeds():
     per_page: int = min(
         MAX_PER_PAGE_ENTRIES,
-        int(bottle.request.query.get("per_page", DEFAULT_PER_PAGE_ENTRIES)),  # type: ignore
+        forgiving_parse_int(
+            bottle.request.query.get("per_page"),  # type: ignore
+            DEFAULT_PER_PAGE_ENTRIES,
+        ),
     )
-    page_num = int(bottle.request.query.get("page_num", 1))  # type: ignore
+    page_num = forgiving_parse_int(bottle.request.query.get("page_num"), 1)  # type: ignore
     offset = (page_num - 1) * per_page
     total_pages: int = max(1, math.ceil(core.get_feed_count() / per_page))
     feeds = core.get_feeds(limit=per_page, offset=offset, get_tags=True)
@@ -254,7 +267,7 @@ def manage_feed_effect():
         title=bottle.request.forms["title"],  # type: ignore
         tags=parse_space_separated_tags(serialised_tags),
     )
-    tag_validation_error = validate_tags(feed.tags) # type: ignore
+    tag_validation_error = validate_tags(feed.tags)  # type: ignore
     if tag_validation_error:
         raise tag_validation_error
     try:
