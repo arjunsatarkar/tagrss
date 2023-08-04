@@ -216,47 +216,52 @@ def manage_feed_view():
         feed_id: int = int(feed_id_raw)
     except ValueError:
         raise bottle.HTTPError(400, f'"{feed_id_raw}" is not a valid feed ID.')
-    feed: dict[str, typing.Any] = {}
-    feed["id"] = feed_id
     try:
-        feed["source"] = core.get_feed_source(feed_id)
-        feed["title"] = core.get_feed_title(feed_id)
+        feed = tagrss.Feed(
+            id=feed_id,
+            source=core.get_feed_source(feed_id),
+            title=core.get_feed_title(feed_id),
+        )
     except tagrss.FeedDoesNotExistError:
         raise bottle.HTTPError(404, f"No feed has ID {feed_id}.")
-    feed["tags"] = core.get_feed_tags(feed_id)
-    feed["serialised_tags"] = serialise_tags(feed["tags"])
-    return bottle.template("manage_feed", feed=feed)
+    feed.tags = core.get_feed_tags(feed_id)
+    serialised_tags = serialise_tags(feed.tags)
+    return bottle.template("manage_feed", feed=feed, serialised_tags=serialised_tags)
 
 
 @bottle.post("/manage_feed")
 def manage_feed_effect():
-    feed: dict[str, typing.Any] = {}
-    feed["id"] = int(bottle.request.forms["id"])  # type: ignore
-    feed["source"] = bottle.request.forms["source"]  # type: ignore
-    feed["title"] = bottle.request.forms["title"]  # type: ignore
-    feed["tags"] = parse_space_separated_tags(bottle.request.forms["tags"])  # type: ignore
-    feed["serialised_tags"] = bottle.request.forms["tags"]  # type: ignore
-    if len(feed["tags"]) > MAX_TAGS:
+    serialised_tags = bottle.request.forms["tags"]  # type: ignore
+    feed = tagrss.Feed(
+        id=int(bottle.request.forms["id"]),  # type: ignore
+        source=bottle.request.forms["source"],  # type: ignore
+        title=bottle.request.forms["title"],  # type: ignore
+        tags=parse_space_separated_tags(serialised_tags),
+    )
+    assert feed.tags
+    if len(feed.tags) > MAX_TAGS:
         raise bottle.HTTPError(400, f"A feed cannot have more than {MAX_TAGS} tags.")
     try:
-        core.set_feed_source(feed["id"], feed["source"])
+        core.set_feed_source(feed.id, feed.source)
     except tagrss.FeedSourceAlreadyExistsError:
         raise bottle.HTTPError(
             400,
-            f"Cannot change source to {feed['source']} as there is already a feed with"
+            f"Cannot change source to {feed.source} as there is already a feed with"
             " that source.",
         )
     try:
-        core.set_feed_title(feed["id"], feed["title"])
+        core.set_feed_title(feed.id, feed.title)
     except tagrss.FeedTitleAlreadyInUseError:
         raise bottle.HTTPError(
             400,
-            f"Cannot change title to {feed['title']} as there is already a feed with"
+            f"Cannot change title to {feed.title} as there is already a feed with"
             " that title.",
         )
-    core.set_feed_tags(feed["id"], feed["tags"])
-    logging.info(f"Edited details of feed {feed['id']}.")
-    return bottle.template("manage_feed", feed=feed, after_update=True)
+    core.set_feed_tags(feed.id, feed.tags)
+    logging.info(f"Edited details of feed {feed.id}.")
+    return bottle.template(
+        "manage_feed", feed=feed, serialised_tags=serialised_tags, after_update=True
+    )
 
 
 @bottle.post("/delete_feed")
@@ -281,7 +286,7 @@ def update_feeds(run_event: threading.Event):
             feeds = core.get_feeds(limit=limit, offset=limit * i)
             for feed in feeds:
                 try:
-                    core.update_feed(feed.id)  # type: ignore
+                    core.update_feed(feed.id)
                 except tagrss.FeedFetchError as e:
                     logging.error(
                         f"Failed to update feed {feed.id} with source {feed.source} "

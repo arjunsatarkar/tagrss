@@ -65,10 +65,10 @@ ParsedFeed = feedparser.FeedParserDict
 
 
 @dataclasses.dataclass(kw_only=True)
-class PartialFeed:
-    id: typing.Optional[FeedId] = None
-    source: typing.Optional[str] = None
-    title: typing.Optional[str] = None
+class Feed:
+    id: FeedId
+    source: str
+    title: str
     tags: typing.Optional[list[str]] = None
 
 
@@ -161,7 +161,7 @@ class SqliteStorageProvider(StorageProvider):
         included_feeds: typing.Optional[list[FeedId]] = None,
         included_tags: typing.Optional[list[str]] = None,
         get_tags: bool = False,
-    ) -> list[PartialFeed]:
+    ) -> list[Feed]:
         where_clause = "WHERE 1"
         if included_feeds:
             where_clause += f" AND id IN ({','.join('?' * len(included_feeds))})"
@@ -181,11 +181,13 @@ class SqliteStorageProvider(StorageProvider):
                     offset,
                 ),
             ).fetchall()
-        feeds_dict: dict[FeedId, PartialFeed] = {}
+        feeds_dict: dict[FeedId, Feed] = {}
         for row in resp:
-            feeds_dict[row[0]] = PartialFeed(source=row[1], title=row[2])
+            feeds_dict[row[0]] = Feed(id=row[0], source=row[1], title=row[2])
         if get_tags:
             feed_ids = feeds_dict.keys()
+            for feed_id in feed_ids:
+                feeds_dict[feed_id].tags = []
             placeholder_str = ",".join("?" * len(feed_ids))
             with self.__get_connection() as conn:
                 resp = conn.execute(
@@ -198,15 +200,7 @@ class SqliteStorageProvider(StorageProvider):
                     feeds_dict[row[0]].tags.append(row[1])  # type: ignore
                 except AttributeError:
                     feeds_dict[row[0]].tags = [row[1]]
-        result: list[PartialFeed] = []
-        for item in feeds_dict.items():
-            feed = PartialFeed(id=item[0], source=item[1].source, title=item[1].title)
-            if get_tags:
-                feed.tags = item[1].tags
-                if not feed.tags:
-                    feed.tags = []
-            result.append(feed)
-        return result
+        return list(feeds_dict.values())
 
     def get_feed_count(
         self,
@@ -485,7 +479,7 @@ class TagRss:
         included_feeds: typing.Optional[list[int]] = None,
         included_tags: typing.Optional[list[str]] = None,
         get_tags: bool = False,
-    ) -> list[PartialFeed]:
+    ) -> list[Feed]:
         return self.__storage.get_feeds(
             limit=limit,
             offset=offset,

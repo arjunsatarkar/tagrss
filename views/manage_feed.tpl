@@ -15,17 +15,16 @@
     <table>
         <tr>
             <th>Title</th>
-            <td>{{feed["title"]}}</td>
+            <td>{{feed.title}}</td>
         </tr>
         <tr>
             <th>Source</th>
-            <td><a href="{{feed['source']}}" class="no-visited-indication">{{feed["source"]}}</a></td>
+            <td><a href="{{feed.source}}" class="no-visited-indication">{{feed.source}}</a></td>
         </tr>
         <tr>
             <th>Tags</th>
             <td>
-                % tags = feed["tags"]
-                % for i, tag in enumerate(tags):
+                % for i, tag in enumerate(feed.tags):
                     % if i > 0:
                         {{", "}}
                     % end
@@ -35,21 +34,21 @@
         </tr>
     </table>
     <form method="post">
-        <input type="hidden" name="id" value="{{feed['id']}}">
+        <input type="hidden" name="id" value="{{feed.id}}">
         <div>
             <label for="title-input">Title:</label>
-            <input type="text" name="title" value="{{feed['title']}}" id="title-input">
+            <input type="text" name="title" value="{{feed.title}}" id="title-input">
         </div>
         <div>
             <label for="source-input">Source:</label>
-            <input type="text" name="source" value="{{feed['source']}}" id="source-input">
+            <input type="text" name="source" value="{{feed.source}}" id="source-input">
         </div>
-        % include("tag_input.tpl", input_name="tags", input_value=feed["serialised_tags"])
+        % include("tag_input.tpl", input_name="tags", input_value=serialised_tags)
         <input type="submit" value="Update" name="update_feed">
     </form>
     <hr>
     <form method="post" action="/delete_feed">
-        <input type="number" name="id" value="{{feed['id']}}" style="display: none;">
+        <input type="number" name="id" value="{{feed.id}}" style="display: none;">
         <input type="submit" value="Delete" name="delete_feed">
     </form>
     % include("footer.tpl")
