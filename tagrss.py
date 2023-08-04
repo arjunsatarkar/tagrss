@@ -418,7 +418,11 @@ class TagRss:
             response = requests.get(source)
         except requests.ConnectionError as e:
             raise FeedFetchError(feed_source=source, underlying=e)
-        except requests.exceptions.MissingSchema as e:
+        except (
+            requests.exceptions.InvalidSchema,
+            requests.exceptions.InvalidURL,
+            requests.exceptions.MissingSchema,
+        ) as e:
             raise FeedFetchError(feed_source=source, bad_source=True, underlying=e)
         epoch_downloaded: int = int(time.time())
         if response.status_code != requests.codes.ok:
