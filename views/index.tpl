@@ -63,9 +63,8 @@
         <summary>Filter</summary>
         <form>
             <div class="side-by-side-help-container">
-                <label>Included feeds:
-                    <input type="text" name="included_feeds" value="{{' '.join([str(feed_id) for feed_id in included_feeds]) if included_feeds else ''}}">
-                </label>
+                <label for="included-feeds-input">Included feeds:</label>
+                <input type="text" name="included_feeds" value="{{' '.join([str(feed_id) for feed_id in included_feeds]) if included_feeds else ''}}" id="included-feeds-input">
                 % include("hover_help.tpl", text="Space-separated feed IDs.")
             </div>
             % include(
