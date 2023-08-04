@@ -228,6 +228,12 @@ def add_feed_effect():
                 )
         else:
             raise bottle.HTTPError(500, f"Failed to fetch feed from {feed_source}.")
+    except tagrss.NotAFeedError:
+        raise bottle.HTTPError(
+            400,
+            f"Could not add feed from {feed_source} as the content at the location is "
+            "not a valid feed.",
+        )
     return bottle.template(
         "add_feed",
         after_add=True,
@@ -316,7 +322,7 @@ def update_feeds(run_event: threading.Event):
             for feed in feeds:
                 try:
                     core.update_feed(feed.id)
-                except tagrss.FeedFetchError as e:
+                except (tagrss.FeedFetchError, tagrss.NotAFeedError) as e:
                     logging.error(
                         f"Failed to update feed {feed.id} with source {feed.source} "
                         f"due to the following error: {e}."

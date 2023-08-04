@@ -59,6 +59,10 @@ class FeedFetchError(Exception):
             super().__init__(f"Get {feed_source} failed: {underlying}")
 
 
+class NotAFeedError(Exception):
+    pass
+
+
 FeedId = int
 Epoch = int
 ParsedFeed = feedparser.FeedParserDict
@@ -431,6 +435,12 @@ class TagRss:
             io.BytesIO(bytes(response.text, encoding="utf-8")),
             response_headers={"Content-Location": base},
         )
+        if not (
+            getattr(parsed.feed, "title", None)
+            or getattr(parsed.feed, "link", None)
+            or getattr(parsed.feed, "id", None)
+        ):
+            raise NotAFeedError(source)
         return (parsed, epoch_downloaded)
 
     def add_feed(
