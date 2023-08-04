@@ -20,6 +20,7 @@ import tagrss
 MAX_PER_PAGE_ENTRIES = 1000
 DEFAULT_PER_PAGE_ENTRIES = 50
 MAX_TAGS = 100
+MAX_TAG_LENGTH = 200
 
 logging.basicConfig(
     format='%(levelname)s:%(name)s:"%(asctime)s":%(message)s',
@@ -68,6 +69,20 @@ def serialise_tags(tags: list[str]) -> str:
             result += " "
         result += (tag.replace("\\", "\\\\")).replace(" ", "\\ ")
     return result
+
+
+def validate_tags(tags: list[str]) -> typing.Optional[bottle.HTTPError]:
+    if len(tags) > MAX_TAGS:
+        return bottle.HTTPError(400, f"A feed cannot have more than {MAX_TAGS} tags.")
+    else:
+        for tag in tags:
+            length = len(tag)
+            if length > MAX_TAG_LENGTH:
+                return bottle.HTTPError(
+                    400,
+                    f"A tag cannot be longer than {MAX_TAG_LENGTH} characters. The "
+                    f"following tag provided violates this: {tag}.",
+                )
 
 
 @bottle.get("/")
@@ -165,8 +180,9 @@ def add_feed_effect():
     tags = parse_space_separated_tags(bottle.request.forms.get("tags"))  # type: ignore
     custom_title: str = bottle.request.forms.get("title")  # type: ignore
 
-    if len(tags) > MAX_TAGS:
-        raise bottle.HTTPError(400, f"A feed cannot have more than {MAX_TAGS} tags.")
+    tag_validation_error = validate_tags(tags)
+    if tag_validation_error:
+        raise tag_validation_error
 
     try:
         feed_id = core.add_feed(
@@ -238,9 +254,9 @@ def manage_feed_effect():
         title=bottle.request.forms["title"],  # type: ignore
         tags=parse_space_separated_tags(serialised_tags),
     )
-    assert feed.tags
-    if len(feed.tags) > MAX_TAGS:
-        raise bottle.HTTPError(400, f"A feed cannot have more than {MAX_TAGS} tags.")
+    tag_validation_error = validate_tags(feed.tags) # type: ignore
+    if tag_validation_error:
+        raise tag_validation_error
     try:
         core.set_feed_source(feed.id, feed.source)
     except tagrss.FeedSourceAlreadyExistsError:
@@ -257,7 +273,7 @@ def manage_feed_effect():
             f"Cannot change title to {feed.title} as there is already a feed with"
             " that title.",
         )
-    core.set_feed_tags(feed.id, feed.tags)
+    core.set_feed_tags(feed.id, feed.tags)  # type: ignore
     logging.info(f"Edited details of feed {feed.id}.")
     return bottle.template(
         "manage_feed", feed=feed, serialised_tags=serialised_tags, after_update=True
